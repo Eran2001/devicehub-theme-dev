@@ -8,11 +8,13 @@
 
 	const DELIVERY_FIELD = fields.deliveryMethod || 'devicehub/delivery_method';
 	const PICKUP_FIELD = fields.pickupStore || 'devicehub/pickup_store';
+	const CART_STORE_KEY = window.wc?.wcBlocksData?.CART_STORE_KEY || 'wc/store/cart';
 	const CHECKOUT_STORE_KEY = window.wc?.wcBlocksData?.CHECKOUT_STORE_KEY || 'wc/store/checkout';
 	const VALIDATION_STORE_KEY = window.wc?.wcBlocksData?.VALIDATION_STORE_KEY || 'wc/store/validation';
 	const DELIVERY_ERROR_KEY = 'devhub-pickup-store';
 	const PLACE_ORDER_SELECTOR = '.wc-block-components-checkout-place-order-button';
 	const ORDER_SUMMARY_SELECTOR = '.wc-block-checkout__sidebar .wp-block-woocommerce-checkout-order-summary-block';
+	const ORDER_SUMMARY_ITEM_SELECTOR = '.wc-block-components-order-summary-item';
 	const CHECKOUT_SIDEBAR_SELECTOR = '.wc-block-checkout__sidebar';
 	const ORDER_NOTE_PLACEHOLDER_SELECTOR = '.devhub-checkout-order-note-placeholder';
 	const PAYMENT_STEP_SELECTOR = '.wp-block-woocommerce-checkout-payment-block';
@@ -41,6 +43,14 @@
 
 	function getCheckoutStore() {
 		return window.wp?.data?.select?.( CHECKOUT_STORE_KEY ) || null;
+	}
+
+	function getCartStore() {
+		return window.wp?.data?.select?.( CART_STORE_KEY ) || null;
+	}
+
+	function getCartDispatch() {
+		return window.wp?.data?.dispatch?.( CART_STORE_KEY ) || null;
 	}
 
 	function getCheckoutDispatch() {
@@ -473,6 +483,145 @@
 		orderSummary.setAttribute( 'aria-disabled', isProcessing ? 'true' : 'false' );
 	}
 
+	function getCartItems() {
+		const cartStore = getCartStore();
+		const cartData = cartStore?.getCartData?.();
+		const items = cartStore?.getCartItems?.() || cartData?.items || [];
+
+		return Array.isArray( items ) ? items : [];
+	}
+
+	function getCartItemKey( item ) {
+		return item?.key || item?.cart_item_key || item?.item_key || '';
+	}
+
+	function getStoreApiNonce() {
+		return (
+			window.wc?.wcSettings?.getSetting?.( 'storeApiNonce' ) ||
+			window.wcSettings?.storeApiNonce ||
+			window.wc_store_api_nonce ||
+			''
+		);
+	}
+
+	function getStoreApiRoot() {
+		const root = window.wpApiSettings?.root || `${ window.location.origin }/wp-json/`;
+		return root.replace( /\/$/, '' ) + '/wc/store/v1';
+	}
+
+	async function removeCheckoutCartItem( cartItemKey, button ) {
+		if ( ! cartItemKey || button?.disabled ) {
+			return;
+		}
+
+		const row = button?.closest?.( ORDER_SUMMARY_ITEM_SELECTOR );
+		if ( button ) {
+			button.disabled = true;
+			button.setAttribute( 'aria-busy', 'true' );
+		}
+		if ( row ) {
+			row.classList.add( 'devhub-checkout-summary-item--removing' );
+		}
+
+		try {
+			const cartDispatch = getCartDispatch();
+			let cartData = null;
+
+			if ( cartDispatch?.removeItemFromCart ) {
+				cartData = await cartDispatch.removeItemFromCart( cartItemKey );
+			} else if ( window.wp?.apiFetch ) {
+				cartData = await window.wp.apiFetch( {
+					method: 'POST',
+					path: '/wc/store/v1/cart/remove-item',
+					data: { key: cartItemKey },
+				} );
+			} else {
+				const response = await window.fetch(
+					`${ getStoreApiRoot() }/cart/remove-item`,
+					{
+						method: 'POST',
+						credentials: 'same-origin',
+						headers: {
+							'Content-Type': 'application/json',
+							Nonce: getStoreApiNonce(),
+						},
+						body: JSON.stringify( { key: cartItemKey } ),
+					}
+				);
+
+				if ( ! response.ok ) {
+					throw new Error( 'Unable to remove cart item.' );
+				}
+
+				cartData = await response.json();
+			}
+
+			if ( cartData && cartDispatch?.receiveCart ) {
+				cartDispatch.receiveCart( cartData );
+			}
+
+			if ( cartDispatch?.refreshCartItems ) {
+				await cartDispatch.refreshCartItems();
+			}
+
+			window.wp?.data?.dispatch?.( CART_STORE_KEY )?.invalidateResolutionForStoreSelector?.( 'getCartData' );
+			window.wp?.data?.dispatch?.( CART_STORE_KEY )?.invalidateResolutionForStoreSelector?.( 'getCartItems' );
+			window.jQuery?.( document.body ).trigger( 'wc_fragment_refresh' );
+			window.setTimeout( () => {
+				render();
+				enhanceOrderSummaryRemoveButtons();
+			}, 120 );
+		} catch ( error ) {
+			if ( button ) {
+				button.disabled = false;
+				button.removeAttribute( 'aria-busy' );
+			}
+			if ( row ) {
+				row.classList.remove( 'devhub-checkout-summary-item--removing' );
+			}
+			// Woo Blocks will usually render its own store notice for API errors.
+			// Keep this path non-destructive so checkout does not full-page reload.
+			window.console?.error?.( error );
+		}
+	}
+
+	function enhanceOrderSummaryRemoveButtons() {
+		const summary = document.querySelector( ORDER_SUMMARY_SELECTOR );
+		if ( ! summary ) {
+			return;
+		}
+
+		const cartItems = getCartItems();
+		const rows = Array.from( summary.querySelectorAll( ORDER_SUMMARY_ITEM_SELECTOR ) );
+
+		rows.forEach( ( row, index ) => {
+			const cartItemKey = getCartItemKey( cartItems[ index ] );
+			if ( ! cartItemKey ) {
+				return;
+			}
+
+			row.classList.add( 'devhub-checkout-summary-item' );
+			row.dataset.devhubCartItemKey = cartItemKey;
+
+			let button = row.querySelector( '.devhub-checkout-summary-remove' );
+			if ( ! button ) {
+				button = document.createElement( 'button' );
+				button.type = 'button';
+				button.className = 'devhub-checkout-summary-remove';
+				button.innerHTML = '<i class="fas fa-times" aria-hidden="true"></i>';
+				button.addEventListener( 'click', ( event ) => {
+					event.preventDefault();
+					event.stopPropagation();
+					removeCheckoutCartItem( button.dataset.cartItemKey, button );
+				} );
+				row.appendChild( button );
+			}
+
+			button.dataset.cartItemKey = cartItemKey;
+			button.setAttribute( 'aria-label', 'Remove item from order summary' );
+		} );
+	}
+
 	function setValidationState( method, pickupStore ) {
 		const validation = getValidationDispatch();
 
@@ -810,6 +959,7 @@
 			syncProcessingState( isProcessing );
 			syncOrderSummaryDeliveryLabel( method, pickupStore );
 			syncBillingTitleForPickup( method );
+			enhanceOrderSummaryRemoveButtons();
 			return;
 		}
 
@@ -823,6 +973,7 @@
 		enhanceEmptyCheckoutButton();
 		enhanceCouponInput();
 		enhanceContactInput();
+		enhanceOrderSummaryRemoveButtons();
 		expandAddressLineTwo();
 		moveOrderNoteStep();
 		movePaymentStep();
@@ -935,6 +1086,7 @@
 		enhanceCouponButton();
 		enhanceCouponInput();
 		enhanceContactInput();
+		enhanceOrderSummaryRemoveButtons();
 		expandAddressLineTwo();
 		relabelAddressBlocks();
 		moveOrderNoteStep();
@@ -961,6 +1113,7 @@
 			enhanceEmptyCheckoutButton();
 			enhanceCouponInput();
 			enhanceContactInput();
+			enhanceOrderSummaryRemoveButtons();
 			expandAddressLineTwo();
 			relabelAddressBlocks();
 			moveOrderNoteStep();

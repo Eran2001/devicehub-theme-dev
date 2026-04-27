@@ -18,6 +18,7 @@
     devhubInitBundleCarousel();
     devhubInitPaymentCarousel();
     devhubInitBuyNow();
+    devhubInitPromoCountdown();
   });
 
   // ── Tabs ──────────────────────────────────────────────────────────────────
@@ -962,5 +963,52 @@
       }
       submitBtn.click();
     });
+  }
+
+  // ── Promo bar countdown ───────────────────────────────────────────────────
+
+  function devhubInitPromoCountdown() {
+    var bar = document.querySelector(".devhub-promo-bar");
+    if (!bar) return;
+
+    var endTs = parseInt(bar.getAttribute("data-end"), 10);
+    if (!endTs || isNaN(endTs)) return;
+
+    var dEl = bar.querySelector('[data-unit="d"]');
+    var hEl = bar.querySelector('[data-unit="h"]');
+    var mEl = bar.querySelector('[data-unit="m"]');
+    var sEl = bar.querySelector('[data-unit="s"]');
+    if (!hEl || !mEl || !sEl) return;
+
+    function pad(n) {
+      return n < 10 ? "0" + n : String(n);
+    }
+
+    function tick() {
+      var now = Math.floor(Date.now() / 1000);
+      var diff = endTs - now;
+
+      if (diff <= 0) {
+        if (dEl) dEl.textContent = "00";
+        hEl.textContent = "00";
+        mEl.textContent = "00";
+        sEl.textContent = "00";
+        bar.style.display = "none";
+        return;
+      }
+
+      var d = Math.floor(diff / 86400);
+      var h = Math.floor((diff % 86400) / 3600);
+      var m = Math.floor((diff % 3600) / 60);
+      var s = diff % 60;
+
+      if (dEl) dEl.textContent = pad(d);
+      hEl.textContent = pad(h);
+      mEl.textContent = pad(m);
+      sEl.textContent = pad(s);
+    }
+
+    tick();
+    setInterval(tick, 1000);
   }
 })();

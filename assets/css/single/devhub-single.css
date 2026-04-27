@@ -1248,3 +1248,178 @@
     justify-content: flex-start;
   }
 }
+
+/* ── Promo circle badge on product image ─────────────────────────────────── */
+
+.devhub-single__main-image {
+  position: relative;
+  z-index: 1;
+}
+
+.devhub-promo-circle-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 72px;
+  height: 72px;
+  background: radial-gradient(circle, #e8001e 0%, #b00018 100%);
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 3px 12px rgba(200, 0, 30, 0.45);
+  z-index: 10;
+  /* starburst spikes via conic-gradient outline */
+  outline: 6px solid transparent;
+  outline-offset: -3px;
+  clip-path: polygon(
+    50% 0%, 61% 15%, 79% 9%, 73% 27%,
+    93% 29%, 83% 44%, 100% 50%, 83% 56%,
+    93% 71%, 73% 73%, 79% 91%, 61% 85%,
+    50% 100%, 39% 85%, 21% 91%, 27% 73%,
+    7% 71%, 17% 56%, 0% 50%, 17% 44%,
+    7% 29%, 27% 27%, 21% 9%, 39% 15%
+  );
+  width: 80px;
+  height: 80px;
+}
+
+.devhub-promo-circle-badge__pct {
+  color: #fff;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.devhub-promo-circle-badge__off {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+/* ── Promo bar (tagline + countdown) ─────────────────────────────────────── */
+
+.devhub-promo-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border-radius: 12px;
+  padding: 14px 20px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.devhub-promo-bar__badge {
+  background: var(--devhub-primary);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 800;
+  padding: 4px 12px;
+  border-radius: 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.devhub-promo-bar__tagline {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  flex: 1;
+  min-width: 0;
+}
+
+.devhub-promo-bar__countdown {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.devhub-promo-bar__label {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.devhub-promo-bar__timer {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.devhub-promo-bar__unit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 6px 10px;
+  min-width: 48px;
+}
+
+.devhub-promo-bar__num {
+  color: #fff;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.devhub-promo-bar__unit em {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 10px;
+  font-style: normal;
+  margin-top: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.devhub-promo-bar__sep {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 14px;
+}
+
+@media (max-width: 576px) {
+  .devhub-promo-bar {
+    flex-wrap: wrap;
+    gap: 8px 12px;
+  }
+  .devhub-promo-bar__badge {
+    flex-shrink: 0;
+  }
+  .devhub-promo-bar__tagline {
+    flex: 1;
+  }
+  .devhub-promo-bar__countdown {
+    width: 100%;
+    margin-left: 0;
+  }
+  .devhub-promo-bar__unit {
+    min-width: 44px;
+    padding: 5px 8px;
+  }
+  .devhub-promo-bar__num {
+    font-size: 18px;
+  }
+}
+
+@media (max-width: 400px) {
+  .devhub-promo-bar__unit {
+    min-width: 36px;
+    padding: 5px 6px;
+  }
+  .devhub-promo-bar__unit em {
+    font-size: 0;
+  }
+  .devhub-promo-bar__unit em::first-letter {
+    font-size: 10px;
+    letter-spacing: 0;
+  }
+}

@@ -258,7 +258,7 @@ function devhub_enqueue_scripts(): void
 
     // ── Cart ──────────────────────────────────────────────────────────────────
     if (devhub_is_cart_page()) {
-        devhub_script('devhub-cart', '/modules/cart.js', ['devhub-utils'], true);
+        devhub_script('devhub-cart', '/modules/cart.js', ['jquery', 'wc-cart-fragments', 'devhub-utils'], true);
     }
 
     // ── Checkout ──────────────────────────────────────────────────────────────

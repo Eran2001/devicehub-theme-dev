@@ -104,7 +104,7 @@ function woocommerce_header_add_to_cart_fragment( $fragments ) {
 	ob_start();
 
 	?>
-<div class="wf__navbar-shopcart">
+<div class="wf_navbar-shopcart">
 <div class="widget_shopping_cart">
 <div class="widget_shopping_cart_content">
 	<?php if ( ! WC()->cart->is_empty() ) : ?>
@@ -179,6 +179,6 @@ function woocommerce_header_add_to_cart_fragment( $fragments ) {
 </div>
 </div>	
 	<?php
-	$fragments['div.wf__navbar-shopcart'] = ob_get_clean();
+	$fragments['div.wf_navbar-shopcart'] = ob_get_clean();
 	return $fragments;
 }

@@ -403,6 +403,118 @@ function devhub_nsl_checkout_redirect( $redirect_to, $requested_redirect_to ) {
 add_filter( 'nsl_facebooklast_location_redirect', 'devhub_nsl_checkout_redirect', 10, 2 );
 add_filter( 'nsl_googlelast_location_redirect', 'devhub_nsl_checkout_redirect', 10, 2 );
 
+// Bundle package: make package selection part of WooCommerce cart identity.
+add_filter( 'woocommerce_add_cart_item_data', 'devhub_add_bundle_identity_to_cart_item', 5, 4 );
+add_filter( 'woocommerce_get_cart_item_from_session', 'devhub_restore_bundle_identity_from_session', 10, 2 );
+add_action( 'woocommerce_checkout_create_order_line_item', 'devhub_add_bundle_identity_to_order_line', 10, 4 );
+
+function devhub_get_requested_bundle_selection( int $product_id ): ?array {
+	if ( ! function_exists( 'devhub_get_product_bundle_context' ) ) {
+		return null;
+	}
+
+	$context = devhub_get_product_bundle_context( $product_id );
+	if ( empty( $context['enabled'] ) || empty( $context['packages'] ) ) {
+		return null;
+	}
+
+	$input_name = isset( $context['input_name'] ) && '' !== (string) $context['input_name']
+		? (string) $context['input_name']
+		: 'devicehub_package_id';
+
+	$posted_package_id = null;
+	if ( isset( $_POST[ $input_name ] ) ) {
+		$posted_package_id = absint( wp_unslash( $_POST[ $input_name ] ) );
+	}
+
+	$package_id = null !== $posted_package_id
+		? $posted_package_id
+		: (int) ( $context['default_id'] ?? 0 );
+
+	if ( $package_id <= 0 ) {
+		return [
+			'bundle_id'    => 'none',
+			'bundle_code'  => 'none',
+			'bundle_name'  => __( 'No Bundle', 'devicehub-theme' ),
+			'bundle_price' => '',
+			'bundle_key'   => 'none',
+		];
+	}
+
+	foreach ( $context['packages'] as $package ) {
+		if ( (int) ( $package['id'] ?? 0 ) !== $package_id ) {
+			continue;
+		}
+
+		$bundle_code = trim( (string) ( $package['package_code'] ?? '' ) );
+		$bundle_key  = '' !== $bundle_code ? $bundle_code : (string) $package_id;
+
+		return [
+			'bundle_id'     => (string) $package_id,
+			'bundle_code'   => $bundle_code,
+			'bundle_name'   => (string) ( $package['name'] ?? '' ),
+			'bundle_price'  => (string) ( $package['price_display'] ?? '' ),
+			'billing_label' => (string) ( $package['billing_label'] ?? '' ),
+			'bundle_key'    => sanitize_key( $bundle_key ),
+		];
+	}
+
+	return [
+		'bundle_id'    => 'none',
+		'bundle_code'  => 'none',
+		'bundle_name'  => __( 'No Bundle', 'devicehub-theme' ),
+		'bundle_price' => '',
+		'bundle_key'   => 'none',
+	];
+}
+
+function devhub_add_bundle_identity_to_cart_item( array $cart_item_data, int $product_id, int $variation_id, int $quantity ): array {
+	$selection = devhub_get_requested_bundle_selection( $product_id );
+	if ( null === $selection ) {
+		return $cart_item_data;
+	}
+
+	$bundle_key     = (string) ( $selection['bundle_key'] ?? 'none' );
+	$product_key_id = $variation_id > 0 ? $variation_id : $product_id;
+
+	$cart_item_data['selected_bundle'] = [
+		'bundle_id'     => (string) ( $selection['bundle_id'] ?? 'none' ),
+		'bundle_code'   => (string) ( $selection['bundle_code'] ?? '' ),
+		'bundle_name'   => (string) ( $selection['bundle_name'] ?? '' ),
+		'bundle_price'  => (string) ( $selection['bundle_price'] ?? '' ),
+		'billing_label' => (string) ( $selection['billing_label'] ?? '' ),
+	];
+	$cart_item_data['bundle_key'] = $bundle_key;
+	$cart_item_data['unique_key'] = md5( $product_key_id . '|' . $bundle_key );
+
+	return $cart_item_data;
+}
+
+function devhub_restore_bundle_identity_from_session( array $cart_item, array $values ): array {
+	foreach ( [ 'selected_bundle', 'bundle_key', 'unique_key' ] as $key ) {
+		if ( isset( $values[ $key ] ) ) {
+			$cart_item[ $key ] = $values[ $key ];
+		}
+	}
+
+	return $cart_item;
+}
+
+function devhub_add_bundle_identity_to_order_line( $item, string $cart_item_key, array $values, $order ): void {
+	if ( empty( $values['selected_bundle'] ) || ! is_array( $values['selected_bundle'] ) ) {
+		return;
+	}
+
+	$bundle = $values['selected_bundle'];
+
+	$item->add_meta_data( 'devicehub_bundle_id', (string) ( $bundle['bundle_id'] ?? 'none' ), true );
+	$item->add_meta_data( 'devicehub_bundle_code', (string) ( $bundle['bundle_code'] ?? '' ), true );
+	$item->add_meta_data( 'devicehub_bundle_name', (string) ( $bundle['bundle_name'] ?? '' ), true );
+	$item->add_meta_data( 'devicehub_bundle_price', (string) ( $bundle['bundle_price'] ?? '' ), true );
+	$item->add_meta_data( 'devicehub_bundle_key', (string) ( $values['bundle_key'] ?? 'none' ), true );
+}
+
+
 
 // ── Bundle package — add package price as a separate fee line in cart totals ──
 // The bundle plugin stores the selected package price as informational metadata
@@ -460,38 +572,35 @@ add_filter( 'woocommerce_hidden_order_itemmeta', function( array $hidden ): arra
 		'devicehub_package_currency',
 		'devicehub_package_billing_label',
 		'devicehub_package_was_required',
+		'devicehub_bundle_id',
+		'devicehub_bundle_code',
+		'devicehub_bundle_name',
+		'devicehub_bundle_price',
+		'devicehub_bundle_key',
 	] );
 } );
 
 add_filter( 'woocommerce_order_item_get_formatted_meta_data', function( array $meta_data, $item ): array {
-	// On frontend order-received and account view-order pages the bundle already
-	// appears as its own fee line item, so skip injecting it into the product meta.
-	if ( ! is_admin() && function_exists( 'is_wc_endpoint_url' ) &&
-		( is_wc_endpoint_url( 'order-received' ) || is_wc_endpoint_url( 'view-order' ) ) ) {
-		return $meta_data;
+	$display_name = $item->get_meta( 'devicehub_package_display_name' );
+	if ( ! $display_name ) {
+		$display_name = $item->get_meta( 'devicehub_bundle_name' );
 	}
 
-	$display_name = $item->get_meta( 'devicehub_package_display_name' );
 	if ( ! $display_name ) {
 		return $meta_data;
 	}
 
-	$price    = $item->get_meta( 'devicehub_package_price_amount' );
-	$currency = $item->get_meta( 'devicehub_package_currency' );
-	$value    = $display_name;
-
-	if ( $price ) {
-		$value .= ' — ' . number_format( (float) $price, 2 );
-		if ( $currency ) {
-			$value .= ' ' . strtoupper( $currency );
-		}
+	$value = $display_name;
+	$bundle_id = (string) $item->get_meta( 'devicehub_bundle_id' );
+	if ( 'none' === $bundle_id || __( 'No Bundle', 'devicehub-theme' ) === $display_name ) {
+		return $meta_data;
 	}
 
 	$meta_data[] = (object) [
 		'key'           => 'devicehub_bundle_display',
 		'display_key'   => __( 'Bundle Package', 'devicehub-bundlepackage' ),
 		'value'         => $value,
-		'display_value' => wp_kses_post( $value ),
+		'display_value' => esc_html( $value ),
 	];
 
 	return $meta_data;
@@ -571,4 +680,56 @@ function devhub_terms_block_inject_pp_link( string $block_content ): string {
 		$replacement,
 		$block_content
 	);
+}
+
+
+// ── Mobile drawer categories — exclude "Uncategorized" ───────────────────────
+// Must defer removal: child functions.php loads before parent's, so the parent's
+// add_action hasn't run yet when hooks.php is first included.
+
+add_action( 'after_setup_theme', function () {
+    remove_action( 'shopire_header_bcat_base', 'shopire_header_bcat_base' );
+}, 20 );
+add_action( 'shopire_header_bcat_base', 'devhub_mobile_drawer_categories' );
+
+function devhub_mobile_drawer_categories(): void {
+    $shopire_hs_hdr_bcat = get_theme_mod( 'shopire_hs_hdr_bcat', '1' );
+    if ( $shopire_hs_hdr_bcat !== '1' || ! class_exists( 'woocommerce' ) ) {
+        return;
+    }
+
+    $product_cat = get_terms( [
+        'taxonomy'   => 'product_cat',
+        'hide_empty' => false,
+        'parent'     => 0,
+        'exclude'    => get_term_by( 'slug', 'uncategorized', 'product_cat' )->term_id ?? 0,
+    ] );
+
+    if ( empty( $product_cat ) || is_wp_error( $product_cat ) ) {
+        return;
+    }
+
+    echo '<ul class="wf_navbar-mainmenu">';
+    foreach ( $product_cat as $cat ) {
+        $child_cats = get_terms( [
+            'taxonomy'   => 'product_cat',
+            'hide_empty' => false,
+            'parent'     => $cat->term_id,
+        ] );
+        $icon = get_term_meta( $cat->term_id, 'shopire_product_cat_icon', true );
+        $icon_html = $icon ? "<i class='" . esc_attr( $icon ) . " wf-mr-2'></i>" : '';
+        $link = '<a title="' . esc_attr( $cat->name ) . '" href="' . esc_url( get_term_link( $cat->term_id ) ) . '" class="nav-link">' . $icon_html . esc_html( $cat->name ) . '</a>';
+
+        if ( ! empty( $child_cats ) && ! is_wp_error( $child_cats ) ) {
+            echo '<li class="menu-item menu-item-has-children" style="display:list-item;">' . $link;
+            echo '<ul class="dropdown-menu">';
+            foreach ( $child_cats as $child ) {
+                echo '<li class="menu-item" style="display:list-item;"><a title="' . esc_attr( $child->name ) . '" href="' . esc_url( get_term_link( $child->term_id ) ) . '" class="dropdown-item">' . esc_html( $child->name ) . '</a></li>';
+            }
+            echo '</ul></li>';
+        } else {
+            echo '<li class="menu-item" style="display:list-item;">' . $link . '</li>';
+        }
+    }
+    echo '</ul>';
 }

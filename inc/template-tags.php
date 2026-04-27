@@ -1036,28 +1036,14 @@ add_action( 'shopire_woo_cart', 'shopire_woo_cart' );
  * Add WooCommerce Cart Icon With Cart Count (https://isabelcastillo.com/woocommerce-cart-icon-count-theme-header)
  */
 function shopire_woo_add_to_cart_fragment( $fragments ) {
-	
     ob_start();
-    $count = WC()->cart->cart_contents_count; 
-    ?> 
-	<?php 
-			$count = WC()->cart->cart_contents_count;
-			
-			if ( $count > 0 ) {
-			?>
-				 <strong class="cart_count"><?php echo esc_html( $count ); ?></strong>
-			<?php 
-			}
-			else {
-				?>
-				<strong class="cart_count"><?php esc_html_e('0','shopire'); ?></strong>
-				<?php 
-			}
-	?>
+    $count = WC()->cart ? WC()->cart->get_cart_contents_count() : 0;
+    ?>
+	<strong class="cart_count"><?php echo esc_html( (string) $count ); ?></strong>
 	<?php
- 
-    $fragments['.cart_count'] = ob_get_clean();
-     
+
+    $fragments['.wf_navbar-cart-item .cart_count'] = ob_get_clean();
+
     return $fragments;
 }
 add_filter( 'woocommerce_add_to_cart_fragments', 'shopire_woo_add_to_cart_fragment' );

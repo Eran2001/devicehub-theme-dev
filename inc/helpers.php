@@ -418,10 +418,10 @@ function devhub_normalize_hex_color(string $value, string $fallback = '#cccccc')
 }
 
 /**
- * Temporary fallback map for product color swatches when term meta is missing.
+ * Fallback resolver for product color swatches when term meta is missing.
  *
- * Uses the color term slug/name so swatches stay testable until real
- * Woo Variation Swatches data is present.
+ * Uses known color words first, then generates a stable color from the term
+ * slug/name so newly-added marketing colors still get distinct swatches.
  */
 function devhub_guess_color_hex(string $slug, string $name, string $fallback = '#cccccc'): string
 {
@@ -430,6 +430,45 @@ function devhub_guess_color_hex(string $slug, string $name, string $fallback = '
         $value = preg_replace('/[^a-z0-9]+/', ' ', $value) ?? '';
 
         return trim(preg_replace('/\s+/', ' ', $value) ?? '');
+    };
+
+    $generate_hex = static function (string $seed) use ($fallback): string {
+        $seed = trim($seed);
+        if ($seed === '') {
+            return $fallback;
+        }
+
+        $hash = sprintf('%u', crc32($seed));
+        $hue = (int) $hash % 360;
+        $saturation = 58 + (int) ($hash % 12);
+        $lightness = 46 + (int) (($hash >> 4) % 12);
+
+        $s = $saturation / 100;
+        $l = $lightness / 100;
+        $c = (1 - abs(2 * $l - 1)) * $s;
+        $x = $c * (1 - abs(fmod($hue / 60, 2) - 1));
+        $m = $l - ($c / 2);
+
+        if ($hue < 60) {
+            [$r, $g, $b] = [$c, $x, 0];
+        } elseif ($hue < 120) {
+            [$r, $g, $b] = [$x, $c, 0];
+        } elseif ($hue < 180) {
+            [$r, $g, $b] = [0, $c, $x];
+        } elseif ($hue < 240) {
+            [$r, $g, $b] = [0, $x, $c];
+        } elseif ($hue < 300) {
+            [$r, $g, $b] = [$x, 0, $c];
+        } else {
+            [$r, $g, $b] = [$c, 0, $x];
+        }
+
+        return sprintf(
+            '#%02x%02x%02x',
+            (int) round(($r + $m) * 255),
+            (int) round(($g + $m) * 255),
+            (int) round(($b + $m) * 255)
+        );
     };
 
     $exact_map = [
@@ -454,6 +493,7 @@ function devhub_guess_color_hex(string $slug, string $name, string $fallback = '
         'cobalt violet' => '#6f63b8',
         'gold' => '#d4af37',
         'rose gold' => '#b76e79',
+        'orange' => '#ff8a3d',
         'red' => '#d64545',
         'yellow' => '#f2c94c',
         'coral' => '#ff7f50',
@@ -480,6 +520,9 @@ function devhub_guess_color_hex(string $slug, string $name, string $fallback = '
     foreach ($candidates as $candidate) {
         if (str_contains($candidate, 'rose gold')) {
             return $exact_map['rose gold'];
+        }
+        if (str_contains($candidate, 'orange')) {
+            return $exact_map['orange'];
         }
         if (str_contains($candidate, 'natural titanium')) {
             return $exact_map['natural titanium'];
@@ -564,7 +607,7 @@ function devhub_guess_color_hex(string $slug, string $name, string $fallback = '
         }
     }
 
-    return $fallback;
+    return $generate_hex($candidates[0] ?? $name);
 }
 
 /**
@@ -687,6 +730,16 @@ function devhub_render_product_card(WC_Product $product, string $img_override = 
             <?php else: ?>
                 <div class="devhub-product-card__img-placeholder" aria-hidden="true"></div>
             <?php endif; ?>
+            <?php
+            if (function_exists('devhub_promo_get_winning_offer')) {
+                $devhub_card_offer = devhub_promo_get_winning_offer($product);
+                if ($devhub_card_offer && (float) $devhub_card_offer['discount'] > 0):
+            ?>
+                <div class="devhub-product-card__promo-badge" aria-label="-<?php echo esc_attr(number_format((float) $devhub_card_offer['discount'], 0)); ?>% off">
+                    <span class="devhub-product-card__promo-badge-pct">-<?php echo esc_html(number_format((float) $devhub_card_offer['discount'], 0)); ?>%</span>
+                    <span class="devhub-product-card__promo-badge-off"><?php esc_html_e('OFF', 'devicehub-theme'); ?></span>
+                </div>
+            <?php endif; } ?>
         </a>
 
         <div class="devhub-product-card__body">

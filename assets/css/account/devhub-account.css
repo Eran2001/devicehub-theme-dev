@@ -2066,8 +2066,3 @@
 dl.dh-order-pkg {
   display: none;
 }
-
-/* Hide bundle meta from product row on account view-order — bundle shown as its own line item */
-.woocommerce-order-details .wc-item-meta {
-  display: none !important;
-}

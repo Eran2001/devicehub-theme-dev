@@ -1147,6 +1147,53 @@ tr:has(.order-actions--heading) {
   animation: text-spin 0.5s 1;
 }
 
+.woocommerce-checkout .devhub-checkout-summary-item {
+  position: relative;
+  padding-right: 34px !important;
+}
+
+.woocommerce-checkout .devhub-checkout-summary-remove {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid #e4e7ec;
+  border-radius: 50%;
+  background: #fff;
+  color: #667085;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  transition:
+    border-color 0.15s,
+    color 0.15s,
+    background-color 0.15s;
+}
+
+.woocommerce-checkout .devhub-checkout-summary-remove:hover,
+.woocommerce-checkout .devhub-checkout-summary-remove:focus-visible {
+  border-color: var(--devhub-primary);
+  background: rgba(255, 102, 0, 0.08);
+  color: var(--devhub-primary);
+  outline: none;
+}
+
+.woocommerce-checkout .devhub-checkout-summary-remove[disabled] {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.woocommerce-checkout .devhub-checkout-summary-item--removing {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
 .devhub-delivery-method {
   margin: 0;
   padding: 22px 24px;
@@ -2089,11 +2136,6 @@ tr:has(.order-actions--heading) {
 
 /* Hide payment method from order confirmation summary */
 li.woocommerce-order-overview__payment-method {
-  display: none !important;
-}
-
-/* Hide bundle meta from product row on order received — bundle already shown as its own line item */
-.woocommerce-order-received .wc-item-meta {
   display: none !important;
 }
 
