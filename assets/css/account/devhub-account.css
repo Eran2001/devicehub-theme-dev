@@ -493,6 +493,13 @@
   color: #555;
 }
 
+@media (min-width: 768px) {
+  .woocommerce-account .devhub-auth__shell {
+    padding-top: 48px;
+    box-sizing: border-box;
+  }
+}
+
 /* ==========================================================================
    Outer layout — sidebar + content
    ========================================================================== */

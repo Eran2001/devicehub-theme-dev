@@ -220,16 +220,6 @@ $specs_is_active = !$has_features_tab && $has_specs_tab;
                     <img src="<?php echo esc_url($main_img); ?>"
                         alt="<?php echo esc_attr($default_gallery[0]['alt']); ?>"
                         data-full-src="<?php echo esc_url($default_gallery[0]['full_src'] ?? $main_img); ?>">
-                    <?php
-                    if (function_exists('devhub_promo_get_winning_offer')) {
-                        $devhub_badge_offer = devhub_promo_get_winning_offer($product);
-                        if ($devhub_badge_offer && (float) $devhub_badge_offer['discount'] > 0):
-                    ?>
-                        <div class="devhub-promo-circle-badge">
-                            <span class="devhub-promo-circle-badge__pct">-<?php echo esc_html(number_format((float) $devhub_badge_offer['discount'], 0)); ?>%</span>
-                            <span class="devhub-promo-circle-badge__off"><?php esc_html_e('OFF', 'devicehub-theme'); ?></span>
-                        </div>
-                    <?php endif; } ?>
                 </div>
 
                 <div class="devhub-single__thumbnails-slider" id="devhubGallerySlider">
@@ -303,18 +293,6 @@ $specs_is_active = !$has_features_tab && $has_specs_tab;
                 </h1>
 
                 <?php
-                // Collect promo data once — used for both price row and promo bar below
-                $devhub_offer = function_exists('devhub_promo_get_winning_offer') ? devhub_promo_get_winning_offer($product) : null;
-                $devhub_show_promo = ! empty($devhub_offer);
-                if ($devhub_show_promo) {
-                    $devhub_promo_post_id = (int) $devhub_offer['post_id'];
-                    $devhub_tagline       = (string) get_post_meta($devhub_promo_post_id, '_devhub_promo_tagline', true);
-                    $devhub_discount      = (float) $devhub_offer['discount'];
-                    $devhub_end_ts        = strtotime($devhub_offer['end_date']);
-                }
-                ?>
-
-                <?php
                 $is_price_range = $product->is_type('variable')
                     && abs((float) $product->get_variation_price('max', true) - (float) $product->get_variation_price('min', true)) >= 0.01;
                 ?>
@@ -330,43 +308,6 @@ $specs_is_active = !$has_features_tab && $has_specs_tab;
                             : esc_html__('Out of stock', 'devicehub-theme'); ?>
                     </span>
                 </div>
-
-                <?php if ($devhub_show_promo): ?>
-                <div class="devhub-promo-bar" data-end="<?php echo esc_attr($devhub_end_ts); ?>">
-                    <?php if ($devhub_discount > 0): ?>
-                        <span class="devhub-promo-bar__badge">
-                            -<?php echo esc_html(number_format($devhub_discount, 0)); ?>%
-                        </span>
-                    <?php endif; ?>
-                    <?php if ($devhub_tagline !== ''): ?>
-                        <span class="devhub-promo-bar__tagline"><?php echo esc_html($devhub_tagline); ?></span>
-                    <?php endif; ?>
-                    <div class="devhub-promo-bar__countdown">
-                        <span class="devhub-promo-bar__label"><?php esc_html_e('Offer ends in', 'devicehub-theme'); ?></span>
-                        <span class="devhub-promo-bar__timer">
-                            <span class="devhub-promo-bar__unit">
-                                <strong class="devhub-promo-bar__num" data-unit="d">00</strong>
-                                <em><?php esc_html_e('Days', 'devicehub-theme'); ?></em>
-                            </span>
-                            <span class="devhub-promo-bar__sep">:</span>
-                            <span class="devhub-promo-bar__unit">
-                                <strong class="devhub-promo-bar__num" data-unit="h">00</strong>
-                                <em><?php esc_html_e('Hours', 'devicehub-theme'); ?></em>
-                            </span>
-                            <span class="devhub-promo-bar__sep">:</span>
-                            <span class="devhub-promo-bar__unit">
-                                <strong class="devhub-promo-bar__num" data-unit="m">00</strong>
-                                <em><?php esc_html_e('Mins', 'devicehub-theme'); ?></em>
-                            </span>
-                            <span class="devhub-promo-bar__sep">:</span>
-                            <span class="devhub-promo-bar__unit">
-                                <strong class="devhub-promo-bar__num" data-unit="s">00</strong>
-                                <em><?php esc_html_e('Secs', 'devicehub-theme'); ?></em>
-                            </span>
-                        </span>
-                    </div>
-                </div>
-                <?php endif; ?>
 
                 <?php $short_desc = $product->get_short_description(); if ($short_desc): ?>
                     <div class="devhub-single__short-desc">

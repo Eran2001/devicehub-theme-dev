@@ -730,16 +730,6 @@ function devhub_render_product_card(WC_Product $product, string $img_override = 
             <?php else: ?>
                 <div class="devhub-product-card__img-placeholder" aria-hidden="true"></div>
             <?php endif; ?>
-            <?php
-            if (function_exists('devhub_promo_get_winning_offer')) {
-                $devhub_card_offer = devhub_promo_get_winning_offer($product);
-                if ($devhub_card_offer && (float) $devhub_card_offer['discount'] > 0):
-            ?>
-                <div class="devhub-product-card__promo-badge" aria-label="-<?php echo esc_attr(number_format((float) $devhub_card_offer['discount'], 0)); ?>% off">
-                    <span class="devhub-product-card__promo-badge-pct">-<?php echo esc_html(number_format((float) $devhub_card_offer['discount'], 0)); ?>%</span>
-                    <span class="devhub-product-card__promo-badge-off"><?php esc_html_e('OFF', 'devicehub-theme'); ?></span>
-                </div>
-            <?php endif; } ?>
         </a>
 
         <div class="devhub-product-card__body">

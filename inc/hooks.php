@@ -557,7 +557,7 @@ add_filter( 'woocommerce_get_item_data', function ( array $item_data, array $car
 // ── Bundle package — clean up order detail display (UI only, data untouched) ──
 // The plugin's OrderPackageHandler renders its own dl.dh-order-pkg block via
 // woocommerce_order_item_meta_end. We hide that block via CSS and instead show
-// one clean "Bundle Package: Name — price LKR" line via the standard WC meta
+// one clean "Bundle Package: Name" line via the standard WC meta
 // system. Raw devicehub_* keys are hidden so they don't appear as extra rows.
 
 add_filter( 'woocommerce_hidden_order_itemmeta', function( array $hidden ): array {
@@ -581,29 +581,53 @@ add_filter( 'woocommerce_hidden_order_itemmeta', function( array $hidden ): arra
 } );
 
 add_filter( 'woocommerce_order_item_get_formatted_meta_data', function( array $meta_data, $item ): array {
-	$display_name = $item->get_meta( 'devicehub_package_display_name' );
-	if ( ! $display_name ) {
-		$display_name = $item->get_meta( 'devicehub_bundle_name' );
+	$bundle_label = __( 'Bundle Package', 'devicehub-bundlepackage' );
+	$clean_meta   = [];
+
+	foreach ( $meta_data as $meta ) {
+		$key         = isset( $meta->key ) ? (string) $meta->key : '';
+		$display_key = isset( $meta->display_key ) ? wp_strip_all_tags( (string) $meta->display_key ) : '';
+
+		if (
+			str_starts_with( $key, 'devicehub_package_' )
+			|| str_starts_with( $key, 'devicehub_bundle_' )
+			|| $display_key === $bundle_label
+		) {
+			continue;
+		}
+
+		$clean_meta[] = $meta;
 	}
 
-	if ( ! $display_name ) {
-		return $meta_data;
+	$bundle_id  = (string) ( $item->get_meta( 'devicehub_package_id' ) ?: $item->get_meta( 'devicehub_bundle_id' ) );
+	$bundle_key = (string) $item->get_meta( 'devicehub_bundle_key' );
+
+	if ( '' === $bundle_id || 'none' === $bundle_id || 'none' === $bundle_key ) {
+		return $clean_meta;
 	}
 
-	$value = $display_name;
-	$bundle_id = (string) $item->get_meta( 'devicehub_bundle_id' );
-	if ( 'none' === $bundle_id || __( 'No Bundle', 'devicehub-theme' ) === $display_name ) {
-		return $meta_data;
+	$display_name = (string) $item->get_meta( 'devicehub_package_name' );
+	if ( '' === $display_name ) {
+		$display_name = (string) $item->get_meta( 'devicehub_bundle_name' );
+	}
+	if ( '' === $display_name ) {
+		$display_name = (string) $item->get_meta( 'devicehub_package_display_name' );
 	}
 
-	$meta_data[] = (object) [
+	$display_name = trim( preg_replace( '/\s+[—-]\s+[\d,.]+\s*[A-Z]{3}\s*$/', '', $display_name ) ?? $display_name );
+
+	if ( '' === $display_name || __( 'No Bundle', 'devicehub-theme' ) === $display_name ) {
+		return $clean_meta;
+	}
+
+	$clean_meta[] = (object) [
 		'key'           => 'devicehub_bundle_display',
-		'display_key'   => __( 'Bundle Package', 'devicehub-bundlepackage' ),
-		'value'         => $value,
-		'display_value' => esc_html( $value ),
+		'display_key'   => $bundle_label,
+		'value'         => $display_name,
+		'display_value' => esc_html( $display_name ),
 	];
 
-	return $meta_data;
+	return $clean_meta;
 }, 10, 2 );
 
 
