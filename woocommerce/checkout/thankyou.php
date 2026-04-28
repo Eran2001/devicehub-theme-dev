@@ -49,10 +49,15 @@ defined( 'ABSPATH' ) || exit;
 					<strong><?php echo wc_format_datetime( $order->get_date_created() ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></strong>
 				</li>
 
-				<?php if ( is_user_logged_in() && $order->get_user_id() === get_current_user_id() && $order->get_billing_email() ) : ?>
+				<?php
+				$customer_email = function_exists( 'devhub_get_order_customer_email' )
+					? devhub_get_order_customer_email( $order )
+					: $order->get_billing_email();
+				?>
+				<?php if ( $customer_email ) : ?>
 					<li class="woocommerce-order-overview__email email">
-						<?php esc_html_e( 'Email:', 'woocommerce' ); ?>
-						<strong><?php echo $order->get_billing_email(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></strong>
+						<?php esc_html_e( 'Customer email:', 'devicehub-theme' ); ?>
+						<strong><?php echo esc_html( $customer_email ); ?></strong>
 					</li>
 				<?php endif; ?>
 

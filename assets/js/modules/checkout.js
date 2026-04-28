@@ -8,6 +8,7 @@
 
 	const DELIVERY_FIELD = fields.deliveryMethod || 'devicehub/delivery_method';
 	const PICKUP_FIELD = fields.pickupStore || 'devicehub/pickup_store';
+	const BILLING_EMAIL_FIELD = fields.billingEmail || 'devicehub/billing_email';
 	const CART_STORE_KEY = window.wc?.wcBlocksData?.CART_STORE_KEY || 'wc/store/cart';
 	const CHECKOUT_STORE_KEY = window.wc?.wcBlocksData?.CHECKOUT_STORE_KEY || 'wc/store/checkout';
 	const VALIDATION_STORE_KEY = window.wc?.wcBlocksData?.VALIDATION_STORE_KEY || 'wc/store/validation';
@@ -26,6 +27,10 @@
 	const COUPON_INPUT_LABEL_SELECTOR = '.wp-block-woocommerce-checkout-order-summary-coupon-form-block .wc-block-components-totals-coupon__input label';
 	const CONTACT_EMAIL_INPUT_SELECTOR = '.wc-block-checkout__contact-fields .wc-block-components-text-input input[type="email"]';
 	const CONTACT_EMAIL_LABEL_SELECTOR = '.wc-block-checkout__contact-fields .wc-block-components-text-input label';
+	const BILLING_STEP_SELECTOR = '.wc-block-checkout__shipping-fields, .wc-block-checkout__billing-address, .wp-block-woocommerce-checkout-billing-address-block';
+	const BILLING_ADDRESS_FORM_SELECTOR = '.wc-block-components-address-form';
+	const BILLING_ADDRESS_CARD_SELECTOR = '.wc-block-components-address-card';
+	const BILLING_EMAIL_FIELD_CLASS = 'devhub-checkout-billing-email-field';
 	const ADDRESS_LINE_2_TOGGLE_SELECTOR = '.wc-block-components-address-form__address_2-toggle';
 	const NATIVE_DELIVERY_STEP_SELECTOR = '.wc-block-checkout__shipping-method, #shipping-method';
 	const NATIVE_DELIVERY_OPTION_SELECTOR = `${ NATIVE_DELIVERY_STEP_SELECTOR } .wc-block-components-radio-control__option`;
@@ -55,6 +60,10 @@
 
 	function getCheckoutDispatch() {
 		return window.wp?.data?.dispatch?.( CHECKOUT_STORE_KEY ) || null;
+	}
+
+	function getCartData() {
+		return getCartStore()?.getCartData?.() || {};
 	}
 
 	function getValidationDispatch() {
@@ -745,13 +754,13 @@
 			return;
 		}
 
-		button.closest( '.wp-block-button' )?.classList.add( 'btn--effect-six' );
+		button.closest( '.wp-block-button' )?.classList.remove( 'btn--effect-six' );
+		button.classList.remove( 'wf-btn', 'wf-btn-primary', 'mouseover', 'animating' );
+		button.classList.add( 'devhub-empty-checkout-button' );
 
-		enhanceActionButton(
-			button,
-			'devhub-empty-checkout-button',
-			'Browse store'
-		);
+		if ( button.innerHTML !== 'Browse store <i class="fas fa-arrow-right" aria-hidden="true"></i>' ) {
+			button.innerHTML = 'Browse store <i class="fas fa-arrow-right" aria-hidden="true"></i>';
+		}
 	}
 
 	function enhanceCouponInput() {
@@ -772,6 +781,7 @@
 	function enhanceContactInput() {
 		const input = document.querySelector( CONTACT_EMAIL_INPUT_SELECTOR );
 		const label = document.querySelector( CONTACT_EMAIL_LABEL_SELECTOR );
+		const accountEmail = String( config.accountEmail || '' ).trim();
 
 		if ( ! input ) {
 			return;
@@ -779,9 +789,101 @@
 
 		input.placeholder = 'Enter email address';
 
+		if ( accountEmail ) {
+			input.value = accountEmail;
+			input.defaultValue = accountEmail;
+			input.readOnly = true;
+		}
+
 		if ( label ) {
 			label.textContent = 'Email address';
 		}
+	}
+
+	function getBillingEmail() {
+		const additionalFields = getAdditionalFields();
+		const customBillingEmail = String( additionalFields[ BILLING_EMAIL_FIELD ] || '' ).trim();
+		const configuredBillingEmail = String( config.billingEmail || '' ).trim();
+		const cartBillingEmail = String( getCartData()?.billingAddress?.email || '' ).trim();
+
+		return customBillingEmail || configuredBillingEmail || cartBillingEmail;
+	}
+
+	function syncInitialBillingEmail() {
+		const configuredBillingEmail = String( config.billingEmail || '' ).trim();
+		const cartBillingEmail = String( getCartData()?.billingAddress?.email || '' ).trim();
+		const customBillingEmail = String( getAdditionalFields()[ BILLING_EMAIL_FIELD ] || '' ).trim();
+		const initialBillingEmail = configuredBillingEmail || cartBillingEmail;
+
+		if ( state.billingEmailInitialized || ! initialBillingEmail ) {
+			return;
+		}
+
+		state.billingEmailInitialized = true;
+
+		if ( customBillingEmail !== initialBillingEmail ) {
+			setBillingEmail( initialBillingEmail );
+		}
+	}
+
+	function setBillingEmail( email ) {
+		patchAdditionalFields( {
+			[ BILLING_EMAIL_FIELD ]: email,
+		} );
+	}
+
+	function getBillingStepTitle( step ) {
+		return normalizeText(
+			step?.querySelector( '.wc-block-components-checkout-step__title' )?.textContent || ''
+		);
+	}
+
+	function getBillingSteps() {
+		return Array.from( document.querySelectorAll( BILLING_STEP_SELECTOR ) ).filter( ( step ) => {
+			const title = getBillingStepTitle( step );
+			return ! title || title.includes( 'billing address' );
+		} );
+	}
+
+	function ensureBillingEmailFormField( step ) {
+		const form = step.querySelector( BILLING_ADDRESS_FORM_SELECTOR );
+
+		if ( ! form ) {
+			return;
+		}
+
+		let field = form.querySelector( `.${ BILLING_EMAIL_FIELD_CLASS }` );
+		const billingEmail = getBillingEmail();
+
+		if ( ! field ) {
+			field = document.createElement( 'div' );
+			field.className = `wc-block-components-text-input ${ BILLING_EMAIL_FIELD_CLASS }`;
+			field.innerHTML = `
+				<input type="email" id="devhub-billing-email" autocomplete="email">
+				<label for="devhub-billing-email">Email address</label>
+			`;
+			form.appendChild( field );
+
+			field.querySelector( 'input' )?.addEventListener( 'input', ( event ) => {
+				setBillingEmail( event.target.value );
+			} );
+		}
+
+		const input = field.querySelector( 'input' );
+		if ( input && document.activeElement !== input && input.value !== billingEmail ) {
+			input.value = billingEmail;
+		}
+	}
+
+	function enhanceBillingEmailField() {
+		syncInitialBillingEmail();
+
+		getBillingSteps().forEach( ( step ) => {
+			ensureBillingEmailFormField( step );
+			step.querySelectorAll( `.${ BILLING_EMAIL_FIELD_CLASS }` ).forEach( ( field ) => {
+				field.style.display = step.querySelector( BILLING_ADDRESS_FORM_SELECTOR ) ? '' : 'none';
+			} );
+		} );
 	}
 
 	function expandAddressLineTwo() {
@@ -1089,6 +1191,7 @@
 		enhanceOrderSummaryRemoveButtons();
 		expandAddressLineTwo();
 		relabelAddressBlocks();
+		enhanceBillingEmailField();
 		moveOrderNoteStep();
 		movePaymentStep();
 		enforceTermsMessage();
@@ -1116,6 +1219,7 @@
 			enhanceOrderSummaryRemoveButtons();
 			expandAddressLineTwo();
 			relabelAddressBlocks();
+			enhanceBillingEmailField();
 			moveOrderNoteStep();
 			movePaymentStep();
 		} );

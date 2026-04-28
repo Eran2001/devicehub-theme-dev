@@ -9,6 +9,7 @@ defined( 'ABSPATH' ) || exit;
 
 const DEVHUB_CHECKOUT_DELIVERY_METHOD_FIELD = 'devicehub/delivery_method';
 const DEVHUB_CHECKOUT_PICKUP_STORE_FIELD    = 'devicehub/pickup_store';
+const DEVHUB_CHECKOUT_BILLING_EMAIL_FIELD   = 'devicehub/billing_email';
 const DEVHUB_ORDER_DELIVERY_METHOD_META     = 'delivery_method';
 const DEVHUB_ORDER_DELIVERY_METHOD_LABEL    = 'delivery_method_label';
 const DEVHUB_ORDER_PICKUP_STORE_LABEL       = 'pickup_store_label';
@@ -39,9 +40,20 @@ add_filter( 'woocommerce_get_country_locale', 'devhub_require_checkout_phone_fie
  */
 function devhub_save_delivery_type_meta( WC_Order $order, WP_REST_Request $request ): void {
 	$fields          = (array) $request->get_param( 'additional_fields' );
+	$billing_address = (array) $request->get_param( 'billing_address' );
 	$delivery_method = sanitize_text_field( (string) ( $fields[ DEVHUB_CHECKOUT_DELIVERY_METHOD_FIELD ] ?? 'home_delivery' ) );
+	$billing_email   = sanitize_email( (string) ( $fields[ DEVHUB_CHECKOUT_BILLING_EMAIL_FIELD ] ?? '' ) );
+	$customer_email  = sanitize_email( (string) ( $billing_address['email'] ?? $order->get_billing_email() ) );
 
 	$order->update_meta_data( 'delivery_type', 'pickup' === $delivery_method ? 'STORE_PICKUP' : 'HOME_DELIVERY' );
+
+	if ( '' !== $customer_email ) {
+		$order->update_meta_data( 'customer_email', $customer_email );
+	}
+
+	if ( '' !== $billing_email ) {
+		$order->set_billing_email( $billing_email );
+	}
 }
 
 /**
@@ -113,14 +125,49 @@ function devhub_ensure_payment_details( WC_Order $order ): void {
  * @return void
  */
 function devhub_ensure_order_source_meta( WC_Order $order ): void {
-	$current = sanitize_text_field( (string) $order->get_meta( 'source', true ) );
+	$changed = false;
 
-	if ( 'DeviceHub' === $current ) {
-		return;
+	if ( 'DeviceHub' !== sanitize_text_field( (string) $order->get_meta( 'source', true ) ) ) {
+		$order->update_meta_data( 'source', 'DeviceHub' );
+		$changed = true;
 	}
 
-	$order->update_meta_data( 'source', 'DeviceHub' );
-	$order->save_meta_data();
+	$customer_email = devhub_get_order_customer_email( $order );
+	if ( '' !== $customer_email && $customer_email !== (string) $order->get_meta( 'customer_email', true ) ) {
+		$order->update_meta_data( 'customer_email', $customer_email );
+		$changed = true;
+	}
+
+	if ( $changed ) {
+		$order->save_meta_data();
+	}
+}
+
+function devhub_get_order_customer_email( WC_Order $order ): string {
+	$current_user_id = get_current_user_id();
+
+	if ( $current_user_id > 0 && (int) $order->get_user_id() === $current_user_id ) {
+		$current_user = wp_get_current_user();
+
+		if ( $current_user instanceof WP_User && '' !== $current_user->user_email ) {
+			return sanitize_email( (string) $current_user->user_email );
+		}
+	}
+
+	$stored_email = sanitize_email( (string) $order->get_meta( 'customer_email', true ) );
+	if ( '' !== $stored_email ) {
+		return $stored_email;
+	}
+
+	if ( $order->get_user_id() > 0 ) {
+		$customer = get_user_by( 'id', $order->get_user_id() );
+
+		if ( $customer instanceof WP_User && '' !== $customer->user_email ) {
+			return sanitize_email( (string) $customer->user_email );
+		}
+	}
+
+	return sanitize_email( (string) $order->get_billing_email() );
 }
 
 add_filter(
@@ -178,6 +225,19 @@ function devhub_register_checkout_delivery_fields(): void {
 			'options'       => devhub_get_checkout_pickup_store_options(),
 			'sanitize_callback' => static function ( $value ) {
 				return sanitize_text_field( (string) $value );
+			},
+		]
+	);
+
+	woocommerce_register_additional_checkout_field(
+		[
+			'id'            => DEVHUB_CHECKOUT_BILLING_EMAIL_FIELD,
+			'label'         => __( 'Billing email', 'devicehub-theme' ),
+			'location'      => 'contact',
+			'type'          => 'text',
+			'hidden'        => $always_hidden,
+			'sanitize_callback' => static function ( $value ) {
+				return sanitize_email( (string) $value );
 			},
 		]
 	);
@@ -416,6 +476,7 @@ function devhub_get_order_delivery_method( WC_Order $order ): string {
  */
 function devhub_strip_legacy_delivery_meta_from_rest( WP_REST_Response $response, WC_Order $order, WP_REST_Request $request ): WP_REST_Response {
 	$data = $response->get_data();
+	$data['customer_email'] = devhub_get_order_customer_email( $order );
 
 	if ( empty( $data['meta_data'] ) || ! is_array( $data['meta_data'] ) ) {
 		$data['meta_data'] = [];
@@ -430,8 +491,26 @@ function devhub_strip_legacy_delivery_meta_from_rest( WP_REST_Response $response
 				}
 
 				$key = (string) ( $meta_item['key'] ?? '' );
+				$hidden_keys = [
+					'_debug_log_source_pending_deletion',
+				];
+				$hidden_prefixes = [
+					'_devhub_',
+					'_wc_order_attribution_',
+					'_wcpdf_invoice_',
+				];
 
-				return 0 !== strpos( $key, '_devhub_' );
+				if ( in_array( $key, $hidden_keys, true ) ) {
+					return false;
+				}
+
+				foreach ( $hidden_prefixes as $prefix ) {
+					if ( 0 === strpos( $key, $prefix ) ) {
+						return false;
+					}
+				}
+
+				return true;
 			}
 		)
 	);

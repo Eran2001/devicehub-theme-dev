@@ -963,8 +963,15 @@ tr:has(.order-actions--heading) {
 /* Place Order button */
 .wc-block-components-checkout-place-order-button.wc-block-components-button,
 .wc-block-checkout-empty .wp-block-button__link.devhub-empty-checkout-button {
-  display: inline-block !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
   vertical-align: middle !important;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  height: auto !important;
+  min-height: 44px !important;
   overflow: hidden !important;
   position: relative !important;
   z-index: 0 !important;

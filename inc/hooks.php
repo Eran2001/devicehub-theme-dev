@@ -620,13 +620,6 @@ add_filter( 'woocommerce_order_item_get_formatted_meta_data', function( array $m
 		return $clean_meta;
 	}
 
-	$clean_meta[] = (object) [
-		'key'           => 'devicehub_bundle_display',
-		'display_key'   => $bundle_label,
-		'value'         => $display_name,
-		'display_value' => esc_html( $display_name ),
-	];
-
 	return $clean_meta;
 }, 10, 2 );
 

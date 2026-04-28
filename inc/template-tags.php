@@ -516,7 +516,7 @@ function shopire_footer_mobile_menu() {
 							<form method="get" class="wf_search-form" action="<?php echo esc_url( home_url( '/' ) ); ?>" aria-label="<?php esc_attr_e( 'search again', 'shopire' ); ?>">
 								<label for="wf_search-form-1">
 									<span class="screen-reader-text"><?php esc_html_e( 'Search for:', 'shopire' ); ?></span>
-									<input type="search" id="wf_search-form-1" class="wf_search-field" placeholder="<?php esc_attr_e( 'search Here', 'shopire' ); ?>" value="" name="s" />
+									<input type="search" id="wf_search-form-1" class="wf_search-field" placeholder="<?php esc_attr_e( 'Search here', 'shopire' ); ?>" value="" name="s" />
 								</label>
 								<button type="submit" class="wf_search-submit search-submit"><i class="fas fa-search" aria-hidden="true"></i></button>
 							</form>
@@ -987,7 +987,7 @@ if ( ! function_exists( 'shopire_hdr_product_search' ) ) {
 				<form method="get" class="wf_search-form" action="<?php echo esc_url( home_url( '/' ) ); ?>" aria-label="<?php esc_attr_e( 'search again', 'shopire' ); ?>">
 					<label for="wf_search-form-1">
 						<span class="screen-reader-text"><?php esc_html_e( 'Search for:', 'shopire' ); ?></span>
-						<input type="search" id="wf_search-form-1" class="wf_search-field" placeholder="<?php esc_attr_e( 'search Here', 'shopire' ); ?>" value="" name="s" />
+						<input type="search" id="wf_search-form-1" class="wf_search-field" placeholder="<?php esc_attr_e( 'Search here', 'shopire' ); ?>" value="" name="s" />
 					</label>
 					<input type="hidden" name="post_type" value="product" />
 					<button class="header-search-button" type="submit"><i class="fa fa-search"></i></button>

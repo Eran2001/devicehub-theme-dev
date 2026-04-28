@@ -269,9 +269,12 @@ function devhub_enqueue_scripts(): void
             devhub_localize_login_script();
         }
         wp_localize_script('devhub-checkout', 'devhubCheckoutData', [
+            'accountEmail' => is_user_logged_in() ? wp_get_current_user()->user_email : '',
+            'billingEmail' => WC()->customer ? WC()->customer->get_billing_email() : '',
             'fields' => [
                 'deliveryMethod' => defined('DEVHUB_CHECKOUT_DELIVERY_METHOD_FIELD') ? DEVHUB_CHECKOUT_DELIVERY_METHOD_FIELD : 'devicehub/delivery_method',
                 'pickupStore'    => defined('DEVHUB_CHECKOUT_PICKUP_STORE_FIELD') ? DEVHUB_CHECKOUT_PICKUP_STORE_FIELD : 'devicehub/pickup_store',
+                'billingEmail'   => defined('DEVHUB_CHECKOUT_BILLING_EMAIL_FIELD') ? DEVHUB_CHECKOUT_BILLING_EMAIL_FIELD : 'devicehub/billing_email',
             ],
             'pickupLocations' => function_exists('devhub_get_checkout_pickup_locations') ? devhub_get_checkout_pickup_locations() : [],
             'messages' => [
