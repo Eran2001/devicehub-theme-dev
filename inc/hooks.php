@@ -681,6 +681,101 @@ function devhub_add_bundle_package_fees( $cart ): void {
 // ignored. We use `render_block` to post-process the rendered HTML and inject a
 // Privacy Policy link wherever the plain text appears unlinked.
 
+function devhub_get_order_item_bundle_name( $item ): string {
+	$bundle_id  = (string) ( $item->get_meta( 'devicehub_package_id' ) ?: $item->get_meta( 'devicehub_bundle_id' ) );
+	$bundle_key = (string) $item->get_meta( 'devicehub_bundle_key' );
+
+	if ( '' === $bundle_id || 'none' === $bundle_id || 'none' === $bundle_key ) {
+		return '';
+	}
+
+	$display_name = (string) $item->get_meta( 'devicehub_package_name' );
+	if ( '' === $display_name ) {
+		$display_name = (string) $item->get_meta( 'devicehub_bundle_name' );
+	}
+	if ( '' === $display_name ) {
+		$display_name = (string) $item->get_meta( 'devicehub_package_display_name' );
+	}
+
+	$display_name = trim( wp_strip_all_tags( $display_name ) );
+
+	if ( '' === $display_name || __( 'No Bundle', 'devicehub-theme' ) === $display_name ) {
+		return '';
+	}
+
+	return $display_name;
+}
+
+function devhub_get_order_item_bundle_amount( $item ): float {
+	$raw_price = $item->get_meta( 'devicehub_package_price_amount' );
+	if ( '' === $raw_price ) {
+		$raw_price = $item->get_meta( 'devicehub_bundle_price' );
+	}
+
+	$price = (float) wc_format_decimal( $raw_price );
+
+	if ( $price <= 0.0 ) {
+		return 0.0;
+	}
+
+	$quantity = method_exists( $item, 'get_quantity' ) ? max( 1, (int) $item->get_quantity() ) : 1;
+
+	return $price * $quantity;
+}
+
+function devhub_get_order_bundle_rows_by_item( WC_Order $order ): array {
+	$bundle_rows = [];
+
+	foreach ( $order->get_items( 'line_item' ) as $item_id => $item ) {
+		$name   = devhub_get_order_item_bundle_name( $item );
+		$amount = devhub_get_order_item_bundle_amount( $item );
+
+		if ( '' === $name || $amount <= 0.0 ) {
+			continue;
+		}
+
+		$bundle_rows[ $item_id ] = [
+			'name'   => $name,
+			'amount' => $amount,
+		];
+	}
+
+	return $bundle_rows;
+}
+
+function devhub_get_order_bundle_rows_total( array $bundle_rows ): float {
+	$total = 0.0;
+
+	foreach ( $bundle_rows as $bundle_row ) {
+		$total += isset( $bundle_row['amount'] ) ? (float) $bundle_row['amount'] : 0.0;
+	}
+
+	return $total;
+}
+
+function devhub_is_order_total_bundle_fee_row( string $key, array $total, array $bundle_rows ): bool {
+	if ( ! str_starts_with( $key, 'fee_' ) ) {
+		return false;
+	}
+
+	$label = isset( $total['label'] ) ? wp_strip_all_tags( (string) $total['label'] ) : '';
+	$label = trim( rtrim( $label, ':' ) );
+
+	foreach ( $bundle_rows as $bundle_row ) {
+		$name = isset( $bundle_row['name'] ) ? (string) $bundle_row['name'] : '';
+
+		if ( '' === $name ) {
+			continue;
+		}
+
+		if ( $label === $name || str_starts_with( $label, $name . ' (' ) ) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
 add_filter( 'render_block_woocommerce/checkout-terms-block', 'devhub_terms_block_inject_pp_link' );
 
 function devhub_terms_block_inject_pp_link( string $block_content ): string {

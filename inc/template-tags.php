@@ -380,6 +380,10 @@ function shopire_footer_mobile_menu() {
 	$shopire_hs_footer_mm_search  	= get_theme_mod( 'shopire_hs_footer_mm_search','1');
 	$shopire_footer_mm_search_icon  = get_theme_mod( 'shopire_footer_mm_search_icon','far fa-search');
 	$shopire_footer_mm_search_title  = get_theme_mod( 'shopire_footer_mm_search_title','Search');
+	$devhub_mobile_home_class        = is_front_page() || is_home() ? 'active' : '';
+	$devhub_mobile_shop_class        = class_exists( 'woocommerce' ) && ( is_shop() || is_product_taxonomy() || is_product() ) ? 'active' : '';
+	$devhub_mobile_cart_class        = class_exists( 'woocommerce' ) && is_cart() ? 'active' : '';
+	$devhub_mobile_account_class     = class_exists( 'woocommerce' ) && is_account_page() ? 'active' : '';
 	
 	if($shopire_hs_footer_mm == '1') { 
 	?>
@@ -388,7 +392,7 @@ function shopire_footer_mobile_menu() {
             <ul>
 				<?php if($shopire_hs_footer_mm_home == '1'):  ?>
 					<li>
-						<a href="<?php echo esc_url( home_url( '/' ) ); ?>" class="active">
+						<a href="<?php echo esc_url( home_url( '/' ) ); ?>" class="<?php echo esc_attr( $devhub_mobile_home_class ); ?>">
 							<?php if(!empty($shopire_footer_mm_home_icon)): ?>
 								<i class="<?php echo esc_attr($shopire_footer_mm_home_icon); ?>"></i>
 							<?php endif; ?>	
@@ -401,7 +405,7 @@ function shopire_footer_mobile_menu() {
 				
                <?php if($shopire_hs_footer_mm_shop == '1'  && class_exists( 'woocommerce' )):  ?>
 					<li>
-						<a href="<?php echo esc_url( get_permalink( wc_get_page_id( 'shop' ) ) ); ?>">
+						<a href="<?php echo esc_url( get_permalink( wc_get_page_id( 'shop' ) ) ); ?>" class="<?php echo esc_attr( $devhub_mobile_shop_class ); ?>">
 							<?php if(!empty($shopire_footer_mm_shop_icon)): ?>
 								<i class="<?php echo esc_attr($shopire_footer_mm_shop_icon); ?>"></i>
 							<?php endif; ?>	
@@ -414,7 +418,7 @@ function shopire_footer_mobile_menu() {
 				
                  <?php if($shopire_hs_footer_mm_cart == '1'  && class_exists( 'woocommerce' )):  ?>
 					<li>
-						<a href="<?php echo esc_url(wc_get_cart_url()); ?>">
+						<a href="<?php echo esc_url(wc_get_cart_url()); ?>" class="<?php echo esc_attr( $devhub_mobile_cart_class ); ?>">
 							<?php if(!empty($shopire_footer_mm_cart_icon)): ?>
 								<i class="<?php echo esc_attr($shopire_footer_mm_cart_icon); ?>"></i>
 							<?php endif; ?>	
@@ -428,7 +432,7 @@ function shopire_footer_mobile_menu() {
 				
 				 <?php if($shopire_hs_footer_mm_ma == '1'  && class_exists( 'woocommerce' )):  ?>
 					<li>
-						<a href="<?php echo esc_url(get_permalink( get_option('woocommerce_myaccount_page_id') )); ?>">
+						<a href="<?php echo esc_url(get_permalink( get_option('woocommerce_myaccount_page_id') )); ?>" class="<?php echo esc_attr( $devhub_mobile_account_class ); ?>">
 							<?php if(!empty($shopire_footer_mm_ma_icon)): ?>
 								<i class="<?php echo esc_attr($shopire_footer_mm_ma_icon); ?>"></i>
 							<?php endif; ?>	

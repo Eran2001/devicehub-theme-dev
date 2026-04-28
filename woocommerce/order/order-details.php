@@ -22,6 +22,8 @@ if ( ! $order ) {
 $order_items        = $order->get_items( apply_filters( 'woocommerce_purchase_order_item_types', 'line_item' ) );
 $show_purchase_note = $order->has_status( apply_filters( 'woocommerce_purchase_note_order_statuses', [ 'completed', 'processing' ] ) );
 $downloads          = $order->get_downloadable_items();
+$bundle_rows        = function_exists( 'devhub_get_order_bundle_rows_by_item' ) ? devhub_get_order_bundle_rows_by_item( $order ) : [];
+$bundle_total       = function_exists( 'devhub_get_order_bundle_rows_total' ) ? devhub_get_order_bundle_rows_total( $bundle_rows ) : 0.0;
 $actions            = array_filter(
     wc_get_account_orders_actions( $order ),
     fn( $key ) => 'view' !== $key,
@@ -67,6 +69,20 @@ if ( $show_downloads ) {
                         'purchase_note'      => $product ? $product->get_purchase_note() : '',
                         'product'            => $product,
                     ] );
+
+                    if ( isset( $bundle_rows[ $item_id ] ) ) {
+                        $bundle_row = $bundle_rows[ $item_id ];
+                        ?>
+                        <tr class="woocommerce-table__line-item order_item devhub-order-bundle-fee">
+                            <td class="woocommerce-table__product-name product-name">
+                                <strong><?php echo esc_html( $bundle_row['name'] ); ?>:</strong>
+                            </td>
+                            <td class="woocommerce-table__product-total product-total">
+                                <?php echo wp_kses_post( wc_price( (float) $bundle_row['amount'], [ 'currency' => $order->get_currency() ] ) ); ?>
+                            </td>
+                        </tr>
+                        <?php
+                    }
                 }
 
                 do_action( 'woocommerce_order_details_after_order_table_items', $order );
@@ -94,6 +110,15 @@ if ( $show_downloads ) {
 
             <tfoot>
                 <?php foreach ( $order->get_order_item_totals() as $key => $total ) : ?>
+                    <?php
+                    if ( function_exists( 'devhub_is_order_total_bundle_fee_row' ) && devhub_is_order_total_bundle_fee_row( (string) $key, $total, $bundle_rows ) ) {
+                        continue;
+                    }
+
+                    if ( 'cart_subtotal' === $key && $bundle_total > 0.0 ) {
+                        $total['value'] = wc_price( $order->get_subtotal() + $bundle_total, [ 'currency' => $order->get_currency() ] );
+                    }
+                    ?>
                     <tr>
                         <th scope="row"><?php echo esc_html( $total['label'] ); ?></th>
                         <td><?php echo wp_kses_post( $total['value'] ); ?></td>
