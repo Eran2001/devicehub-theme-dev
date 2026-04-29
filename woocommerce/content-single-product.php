@@ -39,6 +39,37 @@ foreach ($storage_slugs as $slug) {
     $storages[] = ['slug' => $slug, 'name' => $term->name];
 }
 
+$storage_capacity_rank = static function ($storage) {
+    $label = strtolower((string) ($storage['name'] ?? $storage['slug'] ?? ''));
+
+    if (preg_match('/([\d.]+)\s*(tb|gb|mb)/i', $label, $matches)) {
+        $multipliers = [
+            'mb' => 1,
+            'gb' => 1024,
+            'tb' => 1024 * 1024,
+        ];
+
+        return (float) $matches[1] * ($multipliers[strtolower($matches[2])] ?? 1);
+    }
+
+    if (preg_match('/\d+/', $label, $matches)) {
+        return (float) $matches[0];
+    }
+
+    return INF;
+};
+
+usort($storages, static function ($a, $b) use ($storage_capacity_rank) {
+    $rank_a = $storage_capacity_rank($a);
+    $rank_b = $storage_capacity_rank($b);
+
+    if ($rank_a == $rank_b) {
+        return strnatcasecmp($a['name'], $b['name']);
+    }
+
+    return $rank_a <=> $rank_b;
+});
+
 // All available variations serialised for JS resolution
 $available_variations = '[]';
 if ($is_variable) {
@@ -422,6 +453,36 @@ $specs_is_active = !$has_features_tab && $has_specs_tab;
                 <?php endif; ?>
 
                 <!-- ── Cart form ────────────────────────────────────────── -->
+                <?php
+                $devhub_payment_offer_cards = [
+                    [
+                        'id' => 'webx',
+                        'image' => DEVHUB_URI . '/assets/images/webx.svg',
+                        'alt' => __('WebX payment option', 'devicehub-theme'),
+                    ],
+                    [
+                        'id' => 'koko',
+                        'image' => DEVHUB_URI . '/assets/images/koko.svg',
+                        'alt' => __('KOKO payment option', 'devicehub-theme'),
+                    ],
+                    [
+                        'id' => 'debit-credit-card',
+                        'image' => DEVHUB_URI . '/assets/images/visa-master-new.png',
+                        'alt' => __('Debit and credit card payment option', 'devicehub-theme'),
+                    ],
+                ];
+                ?>
+                <div class="devhub-single__payment-offers"
+                    aria-label="<?php esc_attr_e('Payment offers', 'devicehub-theme'); ?>">
+                    <?php foreach ($devhub_payment_offer_cards as $payment_offer_card): ?>
+                        <div
+                            class="devhub-single__payment-offer-card devhub-single__payment-offer-card--<?php echo esc_attr($payment_offer_card['id']); ?>">
+                            <img src="<?php echo esc_url($payment_offer_card['image']); ?>"
+                                alt="<?php echo esc_attr($payment_offer_card['alt']); ?>" loading="lazy">
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+
                 <?php do_action('woocommerce_before_add_to_cart_form'); ?>
 
                 <form class="devhub-single__cart-form cart" method="post" enctype="multipart/form-data"
@@ -439,9 +500,16 @@ $specs_is_active = !$has_features_tab && $has_specs_tab;
                             id="devhubBundlePackageId" value="<?php echo esc_attr((string) $bundle_default_id); ?>">
                     <?php endif; ?>
 
-                    <input type="hidden" name="quantity" value="1">
-
                     <div class="devhub-single__actions">
+                        <div class="devhub-single__quantity" data-devhub-quantity>
+                            <button type="button" class="devhub-single__qty-btn" data-devhub-qty-minus
+                                aria-label="<?php esc_attr_e('Decrease quantity', 'devicehub-theme'); ?>">-</button>
+                            <input type="number" name="quantity" class="devhub-single__qty-input" value="1" min="1"
+                                <?php echo $product->get_max_purchase_quantity() > 0 ? 'max="' . esc_attr((string) $product->get_max_purchase_quantity()) . '"' : ''; ?>
+                                inputmode="numeric" aria-label="<?php esc_attr_e('Product quantity', 'devicehub-theme'); ?>">
+                            <button type="button" class="devhub-single__qty-btn" data-devhub-qty-plus
+                                aria-label="<?php esc_attr_e('Increase quantity', 'devicehub-theme'); ?>">+</button>
+                        </div>
                         <button type="submit" name="add-to-cart" value="<?php echo esc_attr($product->get_id()); ?>"
                             class="devhub-single__btn devhub-single__btn--cart"
                             <?php disabled(!$product->is_in_stock()); ?>>
@@ -503,22 +571,6 @@ $specs_is_active = !$has_features_tab && $has_specs_tab;
                 <?php if ($has_specs_tab): ?>
                     <div class="devhub-single__tab-panel<?php echo $specs_is_active ? ' devhub-single__tab-panel--active' : ''; ?>"
                         id="devhubTabSpecs" role="tabpanel"<?php echo $specs_is_active ? '' : ' hidden'; ?>>
-
-                        <?php if (!empty($quick_stats)): ?>
-                            <div class="devhub-single__quick-stats">
-                                <?php foreach ($quick_stats as $stat): ?>
-                                    <div class="devhub-single__quick-stat">
-                                        <span class="devhub-single__quick-stat-icon">
-                                            <i class="<?php echo esc_attr($stat['icon']); ?>" aria-hidden="true"></i>
-                                        </span>
-                                        <div class="devhub-single__quick-stat-text">
-                                            <span class="devhub-single__quick-stat-label"><?php echo esc_html($stat['label']); ?></span>
-                                            <span class="devhub-single__quick-stat-value"><?php echo esc_html($stat['value']); ?></span>
-                                        </div>
-                                    </div>
-                                <?php endforeach; ?>
-                            </div>
-                        <?php endif; ?>
 
                         <?php if (!empty($specs) || !empty($physical_specs)): ?>
                             <table class="devhub-single__specs-table">

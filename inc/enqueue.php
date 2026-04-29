@@ -67,6 +67,35 @@ function devhub_enqueue_styles(): void
     // All devhub component CSS depends on the tokens defined here.
     wp_enqueue_style('devhub-style', get_stylesheet_uri(), [], DEVHUB_VERSION);
 
+    // ── Page loader — critical CSS inlined so it renders before external files ─
+    wp_add_inline_style('devhub-style', '
+        #devhub-page-loader {
+            position: fixed;
+            inset: 0;
+            z-index: 999999;
+            background: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        #devhub-page-loader.is-ready {
+            opacity: 0;
+            visibility: hidden;
+        }
+        #devhub-page-loader__spinner {
+            width: 42px;
+            height: 42px;
+            border: 3px solid #f0f0f0;
+            border-top-color: #ff6600;
+            border-radius: 50%;
+            animation: devhub-loader-spin 0.7s linear infinite;
+        }
+        @keyframes devhub-loader-spin {
+            to { transform: rotate(360deg); }
+        }
+    ');
+
     // ── Components — always loaded ────────────────────────────────────────────
     devhub_style('devhub-header', '/components/header.css', ['devhub-style']);
     devhub_style('devhub-footer', '/components/footer.css', ['devhub-style']);
@@ -136,12 +165,11 @@ function devhub_enqueue_styles(): void
         devhub_style('devhub-categories', '/home/devhub-categories.css', ['devhub-style']);
         devhub_style('devhub-preorder', '/home/devhub-preorder.css', ['devhub-style']);
         devhub_style('devhub-broadbands', '/home/devhub-broadbands.css', ['devhub-style', 'devhub-product-card']);
-        devhub_script('devhub-hero-categories', '/modules/hero-categories.js', [], true);
         devhub_script('devhub-hero-slider', '/modules/hero-slider.js', [], true);
     }
 
-    // ── Shop / Archive ────────────────────────────────────────────────────────
-    if (devhub_is_shop_page() || devhub_is_product_category_page()) {
+    // ── Shop / Archive / Brand taxonomy ──────────────────────────────────────
+    if (devhub_is_shop_page() || devhub_is_product_category_page() || devhub_is_brand_page()) {
         devhub_style('devhub-archive', '/archive/devhub-archive.css', ['devhub-style', 'devhub-product-card']);
         devhub_style('devhub-filters', '/archive/devhub-filters.css', ['devhub-style']);
     }
@@ -228,6 +256,7 @@ function devhub_enqueue_scripts(): void
     wp_enqueue_script('fancybox', DEVHUB_URI . '/assets/vendors/js/jquery.fancybox.js', ['jquery'], null, true);
     wp_enqueue_script('shopire-theme', DEVHUB_URI . '/assets/js/theme.js', ['jquery'], null, true);
     wp_enqueue_script('shopire-custom', DEVHUB_URI . '/assets/js/custom.js', ['jquery'], null, true);
+    devhub_script('devhub-page-loader', '/modules/page-loader.js', [], true);
     devhub_script('devhub-mobile-menu', '/modules/mobile-menu.js', [], true);
     // ── DeviceHub API utility — always loaded ─────────────────────────────────
     // Exposes devhubConfig to all JS modules: nonce, restUrl, cartUrl, isLoggedIn
@@ -236,9 +265,15 @@ function devhub_enqueue_scripts(): void
         'ajaxUrl' => admin_url('admin-ajax.php'),
         'restUrl' => esc_url_raw(rest_url(devhub_has_woocommerce() ? 'wc/v3/' : '')),
         'nonce' => wp_create_nonce('wp_rest'),
+        'searchNonce' => wp_create_nonce('devhub_header_search'),
         'cartUrl' => devhub_has_woocommerce() && function_exists('wc_get_cart_url') ? wc_get_cart_url() : home_url('/'),
         'isLoggedIn' => is_user_logged_in(),
     ]);
+    devhub_script('devhub-header-search', '/modules/header-search.js', ['devhub-utils'], true);
+    if (function_exists('devhub_show_secondary_nav') && devhub_show_secondary_nav()) {
+        devhub_script('devhub-secondary-nav', '/modules/secondary-nav.js', [], true);
+    }
+    devhub_script('devhub-motion', '/modules/motion.js', [], true);
 
     // ── Home ──────────────────────────────────────────────────────────────────
     if (is_front_page()) {
@@ -247,7 +282,7 @@ function devhub_enqueue_scripts(): void
     }
 
     // ── Archive ───────────────────────────────────────────────────────────────
-    if (devhub_is_shop_page() || devhub_is_product_category_page()) {
+    if (devhub_is_shop_page() || devhub_is_product_category_page() || devhub_is_brand_page()) {
         devhub_script('devhub-filters', '/modules/filters.js', [], true);
     }
 

@@ -14,7 +14,9 @@
     devhubInitImageLightbox();
     devhubInitColorSwatches();
     devhubInitStorageOptions();
+    devhubAutoSelectFirstVariation();
     devhubResolveVariation();
+    devhubInitQuantityStepper();
     devhubInitBundleCarousel();
     devhubInitPaymentCarousel();
     devhubInitBuyNow();
@@ -22,6 +24,51 @@
   });
 
   // ── Tabs ──────────────────────────────────────────────────────────────────
+
+  function devhubInitQuantityStepper() {
+    document.querySelectorAll("[data-devhub-quantity]").forEach(function (stepper) {
+      var input = stepper.querySelector(".devhub-single__qty-input");
+      var minus = stepper.querySelector("[data-devhub-qty-minus]");
+      var plus = stepper.querySelector("[data-devhub-qty-plus]");
+
+      if (!input || !minus || !plus) return;
+
+      function getNumber(value, fallback) {
+        var number = parseInt(value, 10);
+        return Number.isFinite(number) ? number : fallback;
+      }
+
+      function getMin() {
+        return Math.max(1, getNumber(input.getAttribute("min"), 1));
+      }
+
+      function getMax() {
+        var max = getNumber(input.getAttribute("max"), 0);
+        return max > 0 ? max : Infinity;
+      }
+
+      function normalize(value) {
+        return Math.max(getMin(), Math.min(getMax(), getNumber(value, getMin())));
+      }
+
+      function setValue(value) {
+        input.value = normalize(value);
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+
+      minus.addEventListener("click", function () {
+        setValue(getNumber(input.value, getMin()) - 1);
+      });
+
+      plus.addEventListener("click", function () {
+        setValue(getNumber(input.value, getMin()) + 1);
+      });
+
+      input.addEventListener("change", function () {
+        input.value = normalize(input.value);
+      });
+    });
+  }
 
   function devhubInitTabs() {
     var tabBtns = document.querySelectorAll(".devhub-single__tab-btn");
@@ -564,6 +611,80 @@
     });
   }
 
+  function devhubAutoSelectFirstVariation() {
+    var el = document.querySelector(".devhub-single");
+    if (!el || el.dataset.devhubFirstVariationSelected === "true") return;
+
+    var variations;
+    try {
+      variations = JSON.parse(el.getAttribute("data-variations") || "[]");
+    } catch (e) {
+      return;
+    }
+    if (!Array.isArray(variations) || !variations.length) return;
+
+    var colorInput = document.getElementById("devhubAttr_pa_color");
+    var storageInput = document.getElementById("devhubAttr_pa_storage");
+    var swatches = Array.from(document.querySelectorAll(".devhub-single__color-swatch"));
+    var storageBtns = Array.from(document.querySelectorAll(".devhub-single__storage-btn"));
+
+    function hasMatchingVariation(color, storage) {
+      for (var i = 0; i < variations.length; i++) {
+        var attrs = variations[i].attributes || {};
+        var colorOk = !color || !attrs["attribute_pa_color"] || attrs["attribute_pa_color"] === color;
+        var storageOk = !storage || !attrs["attribute_pa_storage"] || attrs["attribute_pa_storage"] === storage;
+        if (colorOk && storageOk) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    var color = "";
+    var storage = "";
+    var firstColor = swatches.find(function (swatch) {
+      return hasMatchingVariation(swatch.getAttribute("data-value") || "", "");
+    });
+
+    if (firstColor) {
+      color = firstColor.getAttribute("data-value") || "";
+    } else if (variations[0] && variations[0].attributes) {
+      color = variations[0].attributes["attribute_pa_color"] || "";
+    }
+
+    var firstStorage = storageBtns.find(function (btn) {
+      return hasMatchingVariation(color, btn.getAttribute("data-value") || "");
+    });
+
+    if (firstStorage) {
+      storage = firstStorage.getAttribute("data-value") || "";
+    } else if (variations[0] && variations[0].attributes) {
+      storage = variations[0].attributes["attribute_pa_storage"] || "";
+    }
+
+    if (colorInput && color) {
+      colorInput.value = color;
+      swatches.forEach(function (swatch) {
+        swatch.classList.toggle(
+          "devhub-single__color-swatch--active",
+          swatch.getAttribute("data-value") === color
+        );
+      });
+    }
+
+    if (storageInput && storage) {
+      storageInput.value = storage;
+      storageBtns.forEach(function (btn) {
+        btn.classList.toggle(
+          "devhub-single__storage-btn--active",
+          btn.getAttribute("data-value") === storage
+        );
+      });
+    }
+
+    el.dataset.devhubFirstVariationSelected = "true";
+  }
+
   // ── Variation resolver ────────────────────────────────────────────────────
 
   function devhubResolveVariation() {
@@ -621,6 +742,17 @@
       return html;
     }
 
+    function swapPriceOrder(container) {
+      if (!container) return;
+      var del = container.querySelector("del");
+      var ins = container.querySelector("ins");
+      if (!del || !ins) return;
+      // Only swap if del appears before ins in the DOM
+      if (del.compareDocumentPosition(ins) & Node.DOCUMENT_POSITION_FOLLOWING) {
+        ins.parentNode.insertBefore(ins, del);
+      }
+    }
+
     if (priceBox && !el.dataset.basePriceHtml) {
       el.dataset.basePriceHtml = priceBox.innerHTML;
     }
@@ -657,6 +789,7 @@
       if (varIdInput) varIdInput.value = match.id;
       if (priceBox && match.price_html) {
         priceBox.innerHTML = normalizePriceHtml(match.price_html);
+        swapPriceOrder(priceBox);
       }
       if (stockBox) {
         stockBox.classList.remove("devhub-single__stock--in", "devhub-single__stock--out");

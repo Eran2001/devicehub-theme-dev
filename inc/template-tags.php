@@ -873,69 +873,8 @@ if ( ! function_exists( 'devhub_render_header_search_panel' ) ) {
 		if ( ! class_exists( 'WooCommerce' ) ) {
 			return;
 		}
-
-		$categories = get_terms([
-			'taxonomy'   => 'product_cat',
-			'hide_empty' => true,
-			'parent'     => 0,
-			'number'     => 4,
-			'orderby'    => 'count',
-			'order'      => 'DESC',
-		]);
-
-		$products = wc_get_products([
-			'status'  => 'publish',
-			'limit'   => 4,
-			'orderby' => 'date',
-			'order'   => 'DESC',
-			'return'  => 'objects',
-		]);
-
-		if (empty($categories) && empty($products)) {
-			return;
-		}
 		?>
-		<div class="devhub-header-search-panel" aria-hidden="true">
-			<?php if ( ! empty($categories) && ! is_wp_error($categories) ) : ?>
-				<div class="devhub-header-search-panel__section">
-					<p class="devhub-header-search-panel__label"><?php esc_html_e('Popular Categories', 'devicehub-theme'); ?></p>
-					<div class="devhub-header-search-panel__chips">
-						<?php foreach ($categories as $category) : ?>
-							<a class="devhub-header-search-panel__chip" href="<?php echo esc_url(get_term_link($category)); ?>">
-								<?php echo esc_html($category->name); ?>
-							</a>
-						<?php endforeach; ?>
-					</div>
-				</div>
-			<?php endif; ?>
-
-			<?php if ( ! empty($products) ) : ?>
-				<div class="devhub-header-search-panel__section">
-					<p class="devhub-header-search-panel__label"><?php esc_html_e('Trending Products', 'devicehub-theme'); ?></p>
-					<div class="devhub-header-search-panel__list">
-						<?php foreach ($products as $product) :
-							$product_link = $product->get_permalink();
-							$product_name = $product->get_name();
-							$product_img  = wp_get_attachment_image_url($product->get_image_id(), 'woocommerce_thumbnail');
-							?>
-							<a class="devhub-header-search-panel__item" href="<?php echo esc_url($product_link); ?>">
-								<span class="devhub-header-search-panel__thumb">
-									<?php if ($product_img) : ?>
-										<img src="<?php echo esc_url($product_img); ?>" alt="<?php echo esc_attr($product_name); ?>">
-									<?php endif; ?>
-								</span>
-								<span class="devhub-header-search-panel__text">
-									<span class="devhub-header-search-panel__name"><?php echo esc_html($product_name); ?></span>
-									<span class="devhub-header-search-panel__price">
-										<?php echo wp_kses_post($product->get_price_html()); ?>
-									</span>
-								</span>
-							</a>
-						<?php endforeach; ?>
-					</div>
-				</div>
-			<?php endif; ?>
-		</div>
+		<div class="devhub-header-search-panel" data-devhub-search-panel aria-hidden="true"></div>
 		<?php
 	}
 }

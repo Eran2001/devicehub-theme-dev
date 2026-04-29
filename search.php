@@ -9,7 +9,10 @@ defined('ABSPATH') || exit;
 
 get_header();
 
-$search_query = get_search_query();
+$search_query = (string) get_query_var('devhub_product_search_term');
+if ($search_query === '') {
+    $search_query = get_search_query();
+}
 $results_count = (int) $wp_query->found_posts;
 ?>
 

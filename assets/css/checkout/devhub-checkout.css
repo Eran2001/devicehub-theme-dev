@@ -652,6 +652,27 @@ tr:has(.order-actions--heading) {
   }
 }
 
+/* Sale price ordering: ins (orange) first, del (strikethrough) second */
+.wc-block-components-order-summary-item .price,
+.wc-block-components-order-summary-item__individual-prices,
+.wc-block-components-product-price {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 6px;
+}
+
+.wc-block-components-order-summary-item del,
+.wc-block-checkout__sidebar del {
+  order: 2;
+}
+
+.wc-block-components-order-summary-item ins,
+.wc-block-checkout__sidebar ins {
+  order: 1;
+  text-decoration: none;
+}
+
 .wc-block-checkout__sidebar .wp-block-woocommerce-checkout-order-summary-block {
   border: 1px solid #e8e8e8;
   border-radius: 12px;

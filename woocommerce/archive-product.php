@@ -5,7 +5,7 @@
  * Layout: sidebar filters (left) + product grid (right).
  * All product data from WooCommerce; images are local SVG placeholders.
  * Filtering: WooCommerce handles pa_* attribute params natively.
- *             pwb-brand is handled by devhub_filter_archive_by_brand() in inc/hooks.php.
+ *             product_brand/pwb-brand are handled by devhub_filter_archive_by_brand() in inc/hooks.php.
  *
  * @package DeviceHub
  */
@@ -126,7 +126,7 @@ function devhub_archive_category_group(): void
  * Uses link-based URL toggling — no JS required for filtering itself.
  *
  * @param string $label     Display label (e.g. "Brand")
- * @param string $taxonomy  Taxonomy slug (e.g. "pwb-brand", "pa_screen-type")
+ * @param string $taxonomy  Taxonomy slug (e.g. "product_brand", "pa_screen-type")
  * @param string $url_param GET param name (e.g. "filter_brand", "filter_screen-type")
  */
 function devhub_archive_filter_group(string $label, string $taxonomy, string $url_param): void
@@ -305,7 +305,7 @@ function devhub_archive_brand_filter_group(): void
 {
     $brand_terms = [];
 
-    foreach (['pwb-brand', 'pa_brand'] as $taxonomy) {
+    foreach (['product_brand', 'pwb-brand', 'pa_brand'] as $taxonomy) {
         $brand_terms = devhub_get_scoped_archive_terms($taxonomy);
 
         if (!empty($brand_terms)) {

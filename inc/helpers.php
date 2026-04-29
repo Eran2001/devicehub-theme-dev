@@ -27,6 +27,21 @@ function devhub_is_shop_page(): bool
     return devhub_has_woocommerce() && function_exists('is_shop') && is_shop();
 }
 
+function devhub_is_brand_page(): bool
+{
+    return devhub_has_woocommerce()
+        && (is_tax('pwb-brand') || is_tax('product_brand') || is_tax('pa_brand'));
+}
+
+function devhub_show_secondary_nav(): bool
+{
+    return is_front_page()
+        || devhub_is_shop_page()
+        || devhub_is_product_page()
+        || devhub_is_product_category_page()
+        || devhub_is_brand_page();
+}
+
 function devhub_is_product_category_page(): bool
 {
     return devhub_has_woocommerce() && function_exists('is_product_category') && is_product_category();
@@ -122,8 +137,21 @@ function devhub_get_category_min_price(int $term_id): ?float
  */
 function devhub_get_product_brand_slugs(int $product_id): string
 {
-    $terms = wp_get_post_terms($product_id, 'pwb-brand', ['fields' => 'slugs']);
-    return (!is_wp_error($terms) && !empty($terms)) ? implode(' ', $terms) : '';
+    $slugs = [];
+
+    foreach (['product_brand', 'pwb-brand', 'pa_brand'] as $taxonomy) {
+        if (!taxonomy_exists($taxonomy)) {
+            continue;
+        }
+
+        $terms = wp_get_post_terms($product_id, $taxonomy, ['fields' => 'slugs']);
+        if (!is_wp_error($terms) && !empty($terms)) {
+            $slugs = array_merge($slugs, $terms);
+        }
+    }
+
+    $slugs = array_values(array_unique(array_filter($slugs)));
+    return !empty($slugs) ? implode(' ', $slugs) : '';
 }
 
 /**
@@ -669,24 +697,18 @@ function devhub_get_product_card_price_html(WC_Product $product): string
         return (string) $product->get_price_html();
     }
 
-    $min_price = (float) $product->get_variation_price('min', true);
-    $max_price = (float) $product->get_variation_price('max', true);
+    $min_price   = (float) $product->get_variation_price('min', true);
+    $min_regular = (float) $product->get_variation_regular_price('min', true);
 
-    if ($min_price <= 0 || abs($max_price - $min_price) < 0.01) {
+    if ($min_price <= 0) {
         return (string) $product->get_price_html();
     }
 
-    $min_regular = (float) $product->get_variation_regular_price('min', true);
-    $from_label = sprintf(
-        '<span class="devhub-product-card__price-prefix">%s</span>',
-        esc_html__('From', 'devicehub-theme')
-    );
-
     if ($min_regular > $min_price) {
-        return $from_label . ' <del>' . wc_price($min_regular) . '</del> <ins>' . wc_price($min_price) . '</ins>';
+        return '<ins>' . wc_price($min_price) . '</ins> <del>' . wc_price($min_regular) . '</del>';
     }
 
-    return $from_label . ' ' . wc_price($min_price);
+    return wc_price($min_price);
 }
 
 /**
@@ -714,6 +736,24 @@ function devhub_render_product_card(WC_Product $product, string $img_override = 
     $brand_slugs = devhub_get_product_brand_slugs($product->get_id());
     $permalink = $product->get_permalink();
     $name = $product->get_name();
+    $card_action_url = $permalink;
+    $card_action_label = __('View Product', 'devicehub-theme');
+    $card_action_disabled = !$in_stock;
+
+    if ($card_action_disabled) {
+        $card_action_label = __('Out of Stock', 'devicehub-theme');
+    } elseif ($product->is_type('variable')) {
+        $card_action_label = __('Select Options', 'devicehub-theme');
+    } elseif ($product->is_purchasable()) {
+        $card_action_label = __('Buy Now', 'devicehub-theme');
+        $card_action_url = add_query_arg(
+            [
+                'add-to-cart' => $product->get_id(),
+                'quantity' => 1,
+            ],
+            function_exists('wc_get_checkout_url') ? wc_get_checkout_url() : $permalink
+        );
+    }
     ?>
     <div class="devhub-product-card" data-brands="<?php echo esc_attr($brand_slugs); ?>">
 
@@ -724,6 +764,10 @@ function devhub_render_product_card(WC_Product $product, string $img_override = 
             </span>
         <?php endif; ?>
 
+        <span class="devhub-product-card__stock devhub-product-card__stock--<?php echo $in_stock ? 'in' : 'out'; ?>">
+            <?php echo $in_stock ? esc_html__('In stock', 'devicehub-theme') : esc_html__('Out of stock', 'devicehub-theme'); ?>
+        </span>
+
         <a href="<?php echo esc_url($permalink); ?>" class="devhub-product-card__img-wrap">
             <?php if ($img_url): ?>
                 <img src="<?php echo esc_url($img_url); ?>" alt="<?php echo esc_attr($name); ?>" loading="lazy">
@@ -733,7 +777,8 @@ function devhub_render_product_card(WC_Product $product, string $img_override = 
         </a>
 
         <div class="devhub-product-card__body">
-            <a href="<?php echo esc_url($permalink); ?>" class="devhub-product-card__name">
+            <a href="<?php echo esc_url($permalink); ?>" class="devhub-product-card__name"
+                title="<?php echo esc_attr($name); ?>">
                 <?php echo esc_html($name); ?>
             </a>
 
@@ -745,9 +790,15 @@ function devhub_render_product_card(WC_Product $product, string $img_override = 
                 <?php echo wp_kses_post(devhub_get_product_card_price_html($product)); ?>
             </div>
 
-            <span class="devhub-product-card__stock devhub-product-card__stock--<?php echo $in_stock ? 'in' : 'out'; ?>">
-                <?php echo $in_stock ? esc_html__('In stock', 'devicehub-theme') : esc_html__('Out of stock', 'devicehub-theme'); ?>
-            </span>
+            <?php if ($card_action_disabled): ?>
+                <span class="devhub-product-card__action devhub-product-card__action--disabled">
+                    <?php echo esc_html($card_action_label); ?>
+                </span>
+            <?php else: ?>
+                <a href="<?php echo esc_url($card_action_url); ?>" class="devhub-product-card__action">
+                    <?php echo esc_html($card_action_label); ?>
+                </a>
+            <?php endif; ?>
         </div>
 
     </div>

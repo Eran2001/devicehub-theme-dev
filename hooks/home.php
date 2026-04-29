@@ -13,21 +13,6 @@ add_action('devhub_hero_section', 'devhub_render_hero_section');
 
 function devhub_render_hero_section(): void
 {
-    if (!taxonomy_exists('product_cat')) {
-        return;
-    }
-
-    $categories = get_terms([
-        'taxonomy' => 'product_cat',
-        'hide_empty' => false,
-        'parent' => 0,
-        'exclude' => get_option('default_product_cat'),
-    ]);
-
-    if (is_wp_error($categories)) {
-        return;
-    }
-
     $hero_slides = get_posts([
         'post_type' => 'devhub_hero_slide',
         'post_status' => 'publish',
@@ -48,45 +33,6 @@ function devhub_render_hero_section(): void
     <section class="devhub-hero" aria-label="<?php esc_attr_e('Hero banner', 'devicehub-theme'); ?>">
         <div class="wf-container">
             <div class="devhub-hero__inner">
-
-                <nav class="devhub-hero__categories"
-                    aria-label="<?php esc_attr_e('Product categories', 'devicehub-theme'); ?>">
-                    <div class="devhub-hero__cat-header">
-                        <i class="fas fa-list-ul" aria-hidden="true"></i>
-                        <span><?php esc_html_e('All Categories', 'devicehub-theme'); ?></span>
-                        <i class="fas fa-chevron-up devhub-hero__cat-toggle" aria-hidden="true"></i>
-                    </div>
-                    <ul class="devhub-hero__cat-list">
-                        <?php foreach ($categories as $cat):
-                            $children = get_terms([
-                                'taxonomy' => 'product_cat',
-                                'parent' => $cat->term_id,
-                                'hide_empty' => false,
-                            ]);
-                            $has_children = !is_wp_error($children) && !empty($children);
-                            ?>
-                            <li class="devhub-hero__cat-item<?php echo $has_children ? ' has-children' : ''; ?>">
-                                <a href="<?php echo esc_url(get_term_link($cat)); ?>">
-                                    <?php echo esc_html($cat->name); ?>
-                                    <?php if ($has_children): ?>
-                                        <i class="fas fa-chevron-right" aria-hidden="true"></i>
-                                    <?php endif; ?>
-                                </a>
-                                <?php if ($has_children): ?>
-                                    <ul class="devhub-hero__cat-sub">
-                                        <?php foreach ($children as $child): ?>
-                                            <li>
-                                                <a href="<?php echo esc_url(get_term_link($child)); ?>">
-                                                    <?php echo esc_html($child->name); ?>
-                                                </a>
-                                            </li>
-                                        <?php endforeach; ?>
-                                    </ul>
-                                <?php endif; ?>
-                            </li>
-                        <?php endforeach; ?>
-                    </ul>
-                </nav>
 
                 <div class="devhub-hero__banner">
                     <?php if ($slide_count > 0): ?>

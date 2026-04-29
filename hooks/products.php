@@ -65,15 +65,9 @@ function devhub_render_product_section(
 
             <div class="devhub-products__header">
                 <h2 class="devhub-products__title"><?php echo esc_html($title); ?></h2>
-                <div class="devhub-products__brands" role="group">
-                    <button class="devhub-brand-tab devhub-brand-tab--active" data-brand="all"
-                        data-section="<?php echo esc_attr($section_id); ?>" aria-pressed="true">All</button>
-                    <?php foreach ($brands as $brand): ?>
-                        <button class="devhub-brand-tab" data-brand="<?php echo esc_attr(sanitize_title($brand)); ?>"
-                            data-section="<?php echo esc_attr($section_id); ?>"
-                            aria-pressed="false"><?php echo esc_html($brand); ?></button>
-                    <?php endforeach; ?>
-                </div>
+                <a href="<?php echo esc_url($view_all_url); ?>" class="devhub-products__view-all">
+                    View All <i class="fas fa-chevron-right" aria-hidden="true"></i>
+                </a>
             </div>
 
             <div class="devhub-products__grid" id="<?php echo esc_attr($section_id); ?>-grid">
@@ -88,12 +82,6 @@ function devhub_render_product_section(
                 }
                 wp_reset_postdata();
                 ?>
-            </div>
-
-            <div class="devhub-products__footer">
-                <a href="<?php echo esc_url($view_all_url); ?>" class="devhub-products__view-all">
-                    View All <i class="fas fa-chevron-right" aria-hidden="true"></i>
-                </a>
             </div>
 
         </div>

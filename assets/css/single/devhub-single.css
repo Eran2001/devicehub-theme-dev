@@ -385,16 +385,16 @@
   flex-wrap: wrap;
 }
 
-.devhub-single__price .price {
+.devhub-single__price {
   display: inline-flex;
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
-  margin: 0;
   line-height: 1;
 }
 
 .devhub-single__price ins {
+  order: 1;
   text-decoration: none !important;
   font-size: var(--devhub-text-4xl) !important;
   font-weight: 800;
@@ -420,6 +420,7 @@
 }
 
 .devhub-single__price del {
+  order: 2;
   font-size: 1.6rem !important;
   font-weight: 600;
   color: var(--devhub-mid);
@@ -750,6 +751,47 @@
   text-decoration: underline;
 }
 
+.devhub-single__payment-offers {
+  display: grid;
+  grid-template-columns: repeat(3, 240px);
+  justify-content: flex-start;
+  gap: 12px;
+  margin: -6px 0 22px;
+}
+
+.devhub-single__payment-offer-card {
+  min-height: 64px;
+  border: 1px solid rgba(228, 231, 236, 0.95);
+  border-radius: var(--devhub-radius-md);
+  background: var(--devhub-white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 16px;
+  box-shadow: none;
+}
+
+.devhub-single__payment-offer-card img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 36px;
+  object-fit: contain;
+}
+
+.devhub-single__payment-offer-card--webx img {
+  max-height: 28px;
+}
+
+.devhub-single__payment-offer-card--koko img {
+  max-height: 34px;
+}
+
+.devhub-single__payment-offer-card--debit-credit-card img {
+  max-height: 36px;
+}
+
 .devhub-single__bundle-arrow {
   position: absolute;
   top: 50%;
@@ -844,13 +886,78 @@
 
 .devhub-single__actions {
   display: flex;
-  gap: 12px;
-  margin-top: 4px;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.devhub-single__quantity {
+  width: 140px;
+  min-width: 140px;
+  height: 40px;
+  display: inline-grid;
+  grid-template-columns: 40px minmax(0, 1fr) 40px;
+  align-items: stretch;
+  border: 1px solid var(--devhub-border);
+  border-radius: 6px;
+  background: var(--devhub-white);
+  overflow: hidden;
+}
+
+.devhub-single__qty-btn,
+.devhub-single__qty-input {
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--devhub-dark);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+  outline: none;
+}
+
+.devhub-single__qty-btn {
+  cursor: pointer;
+  border-radius: 0 !important;
+  transition:
+    background-color var(--devhub-transition),
+    color var(--devhub-transition);
+}
+
+.devhub-single__qty-btn:hover,
+.devhub-single__qty-btn:focus-visible {
+  background: var(--devhub-bg);
+  color: var(--devhub-primary);
+}
+
+.devhub-single__qty-btn:focus,
+.devhub-single__qty-btn:focus-visible,
+.devhub-single__qty-btn:active,
+.devhub-single__qty-input:focus,
+.devhub-single__qty-input:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.devhub-single__qty-input {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.devhub-single__qty-input::-webkit-outer-spin-button,
+.devhub-single__qty-input::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
 }
 
 .devhub-single__btn {
-  flex: 1;
-  padding: 15px 22px;
+  flex: 0 1 240px;
+  max-width: 240px;
+  min-height: 40px;
+  padding: 9px 20px;
   border-radius: var(--devhub-radius-full) !important;
   font-size: var(--devhub-text-md);
   font-weight: 700;
@@ -882,10 +989,13 @@
   color: var(--devhub-white) !important;
   border: none !important;
   border-radius: var(--devhub-radius-full) !important;
-  padding: 15px 22px !important;
+  padding: 9px 20px !important;
+  font-size: 1.42rem !important;
   font-weight: 700 !important;
-  width: auto !important;
-  height: auto !important;
+  width: 240px !important;
+  max-width: 240px !important;
+  min-height: 40px !important;
+  height: 40px !important;
   line-height: normal !important;
   box-shadow: none !important;
   text-transform: none !important;
@@ -898,11 +1008,13 @@
   background: var(--devhub-primary) !important;
   color: var(--devhub-white) !important;
   border-radius: var(--devhub-radius-full) !important;
-  padding: 15px 22px !important;
-  font-size: 1.7rem !important;
+  padding: 9px 20px !important;
+  font-size: 1.42rem !important;
   font-weight: 700 !important;
-  width: auto !important;
-  height: auto !important;
+  width: 240px !important;
+  max-width: 240px !important;
+  min-height: 40px !important;
+  height: 40px !important;
   line-height: normal !important;
   box-shadow: none !important;
   text-transform: none !important;
@@ -1238,6 +1350,21 @@
   }
   .devhub-single__actions {
     flex-direction: column;
+    align-items: stretch;
+  }
+  .devhub-single__quantity {
+    width: 100%;
+    min-width: 0;
+  }
+  .devhub-single__btn,
+  .devhub-single .devhub-single__btn--cart,
+  .woocommerce .devhub-single__btn--cart,
+  .woocommerce-page .devhub-single__btn--cart,
+  .devhub-single .devhub-single__btn--buy,
+  .woocommerce .devhub-single__btn--buy,
+  .woocommerce-page .devhub-single__btn--buy {
+    width: 100% !important;
+    max-width: none !important;
   }
   .devhub-single__tab-btn {
     padding: 12px 16px;
@@ -1333,6 +1460,12 @@
 @media (max-width: 576px) {
   .devhub-single__payment-icons {
     justify-content: flex-start;
+  }
+  .devhub-single__payment-offers {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .devhub-single__payment-offer-card {
+    min-height: 72px;
   }
 }
 

@@ -48,6 +48,10 @@ $shopire_hs_hdr_bcat = get_theme_mod('shopire_hs_hdr_bcat', '1');
                 </div>
                 <!-- End Desktop Navbar -->
 
+                <?php if (function_exists('devhub_render_secondary_nav') && function_exists('devhub_show_secondary_nav') && devhub_show_secondary_nav()) {
+                    devhub_render_secondary_nav();
+                } ?>
+
                 <!-- Mobile Menu -->
                 <div
                     class="wf_mobilenav wf-d-lg-none <?php if ($shopire_hs_hdr_sticky == '1')

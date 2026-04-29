@@ -76,7 +76,7 @@
    ========================================================================== */
 
 .devhub-products__brands {
-  display: flex;
+  display: none;
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
@@ -122,8 +122,37 @@
 
 .devhub-products__grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.devhub-products .devhub-product-card {
+  padding: 12px;
+}
+
+.devhub-products .devhub-product-card__img-wrap {
+  height: 170px;
+  margin-bottom: 10px;
+}
+
+.devhub-products .devhub-product-card__body {
+  gap: 6px;
+}
+
+.devhub-products .devhub-product-card__badge {
+  top: 12px;
+  left: 12px;
+  padding: 0.42rem 0.72rem;
+}
+
+.devhub-products .devhub-product-card__stock {
+  top: 12px;
+  right: 12px;
+}
+
+.devhub-products .devhub-product-card__action {
+  min-height: 34px;
+  padding: 8px 14px;
 }
 
 /* ==========================================================================
@@ -131,8 +160,7 @@
    ========================================================================== */
 
 .devhub-products__footer {
-  text-align: center;
-  margin-top: 24px;
+  display: none;
 }
 
 .devhub-products__view-all {
@@ -142,17 +170,18 @@
   font-size: var(--devhub-text-xl);
   font-weight: 600;
   color: var(--devhub-primary);
-  border: 1.5px solid var(--devhub-primary);
-  border-radius: var(--devhub-radius-sm);
-  padding: 8px 24px;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
   transition:
-    background var(--devhub-transition),
-    color var(--devhub-transition);
+    color var(--devhub-transition),
+    transform var(--devhub-transition);
 }
 
 .devhub-products__view-all:hover {
-  background: var(--devhub-primary);
-  color: var(--devhub-white);
+  background: transparent;
+  color: var(--devhub-primary-dark);
+  transform: translateX(2px);
 }
 
 #devhub-mobile-phones .devhub-products__title {
@@ -168,23 +197,23 @@
 }
 
 #devhub-mobile-phones .devhub-product-card__badge {
-  font-size: var(--devhub-text-xl);
+  font-size: var(--devhub-text-md);
 }
 
 #devhub-mobile-phones .devhub-product-card__name {
-  font-size: var(--devhub-text-3xl);
-}
-
-#devhub-mobile-phones .devhub-product-card__price {
-  font-size: var(--devhub-text-4xl);
-}
-
-#devhub-mobile-phones .devhub-product-card__price del {
   font-size: var(--devhub-text-lg);
 }
 
+#devhub-mobile-phones .devhub-product-card__price {
+  font-size: var(--devhub-text-2xl);
+}
+
+#devhub-mobile-phones .devhub-product-card__price del {
+  font-size: var(--devhub-text-sm);
+}
+
 #devhub-mobile-phones .devhub-product-card__stock {
-  font-size: var(--devhub-text-xl);
+  font-size: var(--devhub-text-md);
 }
 
 #devhub-broad-bands .devhub-products__title {
@@ -200,23 +229,23 @@
 }
 
 #devhub-broad-bands .devhub-product-card__badge {
-  font-size: var(--devhub-text-xl);
+  font-size: var(--devhub-text-md);
 }
 
 #devhub-broad-bands .devhub-product-card__name {
-  font-size: var(--devhub-text-3xl);
-}
-
-#devhub-broad-bands .devhub-product-card__price {
-  font-size: var(--devhub-text-4xl);
-}
-
-#devhub-broad-bands .devhub-product-card__price del {
   font-size: var(--devhub-text-lg);
 }
 
+#devhub-broad-bands .devhub-product-card__price {
+  font-size: var(--devhub-text-2xl);
+}
+
+#devhub-broad-bands .devhub-product-card__price del {
+  font-size: var(--devhub-text-sm);
+}
+
 #devhub-broad-bands .devhub-product-card__stock {
-  font-size: var(--devhub-text-xl);
+  font-size: var(--devhub-text-md);
 }
 
 #devhub-electronics .devhub-products__title {
@@ -232,23 +261,23 @@
 }
 
 #devhub-electronics .devhub-product-card__badge {
-  font-size: var(--devhub-text-xl);
+  font-size: var(--devhub-text-md);
 }
 
 #devhub-electronics .devhub-product-card__name {
-  font-size: var(--devhub-text-3xl);
-}
-
-#devhub-electronics .devhub-product-card__price {
-  font-size: var(--devhub-text-4xl);
-}
-
-#devhub-electronics .devhub-product-card__price del {
   font-size: var(--devhub-text-lg);
 }
 
+#devhub-electronics .devhub-product-card__price {
+  font-size: var(--devhub-text-2xl);
+}
+
+#devhub-electronics .devhub-product-card__price del {
+  font-size: var(--devhub-text-sm);
+}
+
 #devhub-electronics .devhub-product-card__stock {
-  font-size: var(--devhub-text-xl);
+  font-size: var(--devhub-text-md);
 }
 
 #devhub-accessories .devhub-products__title {
@@ -264,15 +293,15 @@
 }
 
 #devhub-accessories .devhub-product-card__badge {
-  font-size: var(--devhub-text-xl);
+  font-size: var(--devhub-text-md);
 }
 
 #devhub-accessories .devhub-product-card__name {
-  font-size: var(--devhub-text-3xl);
+  font-size: var(--devhub-text-lg);
 }
 
 #devhub-accessories .devhub-product-card__price {
-  font-size: var(--devhub-text-4xl);
+  font-size: var(--devhub-text-2xl);
 }
 
 #devhub-mobile-phones .devhub-product-card__price-prefix,
@@ -283,11 +312,11 @@
 }
 
 #devhub-accessories .devhub-product-card__price del {
-  font-size: var(--devhub-text-lg);
+  font-size: var(--devhub-text-sm);
 }
 
 #devhub-accessories .devhub-product-card__stock {
-  font-size: var(--devhub-text-xl);
+  font-size: var(--devhub-text-md);
 }
 
 /* ==========================================================================
@@ -296,7 +325,7 @@
 
 @media (max-width: 1024px) {
   .devhub-products__grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
   }
 }
 
@@ -310,22 +339,8 @@
     align-items: flex-start;
   }
 
-  .devhub-products__brands {
-    width: 100%;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-  }
-
-  .devhub-products__brands::-webkit-scrollbar {
-    display: none;
-  }
-
-  .devhub-brand-tab {
-    flex: 0 0 auto;
-    white-space: nowrap;
+  .devhub-products__view-all {
+    align-self: flex-end;
   }
 }
 

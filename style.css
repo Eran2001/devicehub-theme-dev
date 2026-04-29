@@ -205,6 +205,30 @@ textarea {
   box-shadow: var(--devhub-focus-ring);
 }
 
+.devhub-motion-ready #content > *,
+.devhub-motion-ready .devhub-motion-item {
+  opacity: 0;
+  transform: translate3d(0, 18px, 0);
+  transition:
+    opacity 0.72s cubic-bezier(0.22, 1, 0.36, 1) var(--devhub-motion-delay, 0ms),
+    transform 0.72s cubic-bezier(0.22, 1, 0.36, 1) var(--devhub-motion-delay, 0ms);
+  will-change: opacity, transform;
+}
+
+.devhub-motion-ready #content > .devhub-motion-visible,
+.devhub-motion-ready .devhub-motion-item.devhub-motion-visible {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .devhub-motion-item {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}
+
 /* WooCommerce notices get auto-focused via role="alert" — suppress the focus ring */
 .woocommerce-message:focus-visible,
 .woocommerce-error:focus-visible,
@@ -1259,4 +1283,25 @@ a.wp-block-button__link:focus {
 /* Prevent short-content pages (T&C, Privacy Policy, etc.) from pulling the footer up */
 .page-template-default .wf_posts.wf-py-default {
   min-height: calc(100vh - 80px);
+}
+
+/* ── Price order: sale price (ins/orange) first, regular price (del/strikethrough) second ──
+   Applies globally to WooCommerce standard product loop cards (e.g. Shopire "New in store",
+   cross-sells, upsells). Our custom product cards and single product page have their own
+   order rules in product-card.css and devhub-single.css respectively. */
+.woocommerce ul.products li.product .price,
+.woocommerce-page ul.products li.product .price {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.woocommerce ul.products li.product .price del,
+.woocommerce-page ul.products li.product .price del {
+  order: 2;
+}
+.woocommerce ul.products li.product .price ins,
+.woocommerce-page ul.products li.product .price ins {
+  order: 1;
+  text-decoration: none;
 }

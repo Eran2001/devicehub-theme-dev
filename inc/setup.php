@@ -42,6 +42,8 @@ function devhub_theme_setup(): void
 
     register_nav_menus([
         'primary_menu' => esc_html__('Primary Menu', 'devicehub-theme'),
+        'secondary_menu' => esc_html__('Secondary Navigation', 'devicehub-theme'),
+        'secondary_offers_menu' => esc_html__('Secondary Offers Dropdown', 'devicehub-theme'),
     ]);
 
     // Thumbnail sizes used by product cards and sections

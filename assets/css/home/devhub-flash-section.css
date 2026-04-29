@@ -155,7 +155,7 @@
    ========================================================================== */
 
 .devhub-flash__name {
-  font-size: var(--devhub-text-2xl);
+  font-size: var(--devhub-text-xl);
   font-weight: 500;
   color: var(--devhub-white);
   line-height: 1.4;
@@ -256,7 +256,7 @@
     column-gap: 2px;
   }
   .devhub-flash__name {
-    font-size: var(--devhub-text-md);
+    font-size: var(--devhub-text-sm);
   }
   .devhub-flash__price {
     font-size: var(--devhub-text-3xl);

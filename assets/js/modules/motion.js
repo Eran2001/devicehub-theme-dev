@@ -5,185 +5,133 @@
     return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   }
 
-  function registerPlugin(gsap, plugin) {
-    if (!gsap || !plugin) {
-      return false;
-    }
+  function uniqueElements(selectors) {
+    var seen = new Set();
+    var elements = [];
 
-    if (typeof gsap.registerPlugin === "function") {
-      gsap.registerPlugin(plugin);
-      return true;
-    }
+    selectors.forEach(function (selector) {
+      document.querySelectorAll(selector).forEach(function (element) {
+        if (!seen.has(element)) {
+          seen.add(element);
+          elements.push(element);
+        }
+      });
+    });
 
-    return false;
+    return elements;
   }
 
-  function revealBatch(gsap, ScrollTrigger, selector, options) {
-    var elements = gsap.utils.toArray(selector);
+  function markVisible(element) {
+    element.classList.add("devhub-motion-visible");
+  }
 
-    if (!elements.length) {
+  function prepareElements(elements, baseDelay) {
+    elements.forEach(function (element, index) {
+      element.classList.add("devhub-motion-item");
+      element.style.setProperty(
+        "--devhub-motion-delay",
+        Math.min(baseDelay + index * 42, 260) + "ms"
+      );
+    });
+  }
+
+  function revealPageContent() {
+    var content = document.getElementById("content");
+    var pageTargets = [];
+
+    if (content) {
+      pageTargets = Array.prototype.slice.call(content.children).filter(function (child) {
+        return !["SCRIPT", "STYLE", "NOSCRIPT"].includes(child.tagName);
+      });
+    }
+
+    prepareElements(pageTargets, 0);
+
+    window.requestAnimationFrame(function () {
+      pageTargets.forEach(markVisible);
+    });
+  }
+
+  function revealOnScroll() {
+    var scrollTargets = uniqueElements([
+      ".devhub-page-bar",
+      ".devhub-flash",
+      ".devhub-products",
+      ".devhub-categories",
+      ".devhub-preorder",
+      ".devhub-broadbands",
+      ".devhub-hero",
+      ".devhub-before-broadbands-banner",
+      ".devhub-before-electronics-banner",
+      ".devhub-before-accessories-banner",
+      ".devhub-archive__sidebar",
+      ".devhub-archive__main",
+      ".devhub-archive__toolbar",
+      ".devhub-archive__grid .devhub-product-card",
+      ".devhub-single__gallery",
+      ".devhub-single__info > *",
+      ".devhub-single__tabs",
+      ".devhub-search__intro",
+      ".devhub-search__grid .devhub-product-card",
+      ".devhub-account-wrap",
+      ".devhub-account-sidebar > *",
+      ".devhub-account-content > *",
+      ".devhub-auth__card",
+      ".devhub-dashboard-card",
+      ".devhub-address-card",
+      ".devhub-empty-state",
+      ".devhub-delivery-method",
+      ".woocommerce-cart-form",
+      ".cart_totals",
+      ".wc-block-cart__main > *",
+      ".wc-block-cart__sidebar > *",
+      ".wc-block-checkout__main > *",
+      ".wc-block-checkout__sidebar > *",
+      ".woocommerce-order > *",
+      ".woocommerce-order-details",
+      ".woocommerce-customer-details",
+    ]);
+
+    prepareElements(scrollTargets, 0);
+
+    if (!("IntersectionObserver" in window)) {
+      scrollTargets.forEach(markVisible);
       return;
     }
 
-    gsap.set(elements, {
-      autoAlpha: 0,
-      y: options.y || 24,
-      scale: options.scale || 0.985,
-      transformOrigin: "center top",
-    });
+    var observer = new IntersectionObserver(
+      function (entries) {
+        entries.forEach(function (entry) {
+          if (!entry.isIntersecting) {
+            return;
+          }
 
-    ScrollTrigger.batch(elements, {
-      start: options.start || "top 86%",
-      once: true,
-      onEnter: function (batch) {
-        gsap.to(batch, {
-          autoAlpha: 1,
-          y: 0,
-          scale: 1,
-          duration: options.duration || 0.8,
-          ease: options.ease || "power3.out",
-          stagger: options.stagger || 0.08,
-          clearProps: "opacity,visibility,transform",
+          markVisible(entry.target);
+          observer.unobserve(entry.target);
         });
       },
-    });
-  }
-
-  function initHeroMotion(gsap) {
-    var hero = document.querySelector(".devhub-hero");
-
-    if (!hero) {
-      return;
-    }
-
-    var timeline = gsap.timeline({
-      defaults: {
-        duration: 0.85,
-        ease: "power3.out",
-      },
-    });
-
-    var categoryPanel = hero.querySelector(".devhub-hero__categories");
-    var banner = hero.querySelector(".devhub-hero__banner");
-    var controls = hero.querySelectorAll(
-      ".devhub-hero__arrow, .devhub-hero__dot"
-    );
-
-    if (categoryPanel) {
-      timeline.from(
-        categoryPanel,
-        {
-          autoAlpha: 0,
-          x: -28,
-        },
-        0
-      );
-    }
-
-    if (banner) {
-      timeline.from(
-        banner,
-        {
-          autoAlpha: 0,
-          y: 26,
-          scale: 0.985,
-        },
-        0.08
-      );
-    }
-
-    if (controls.length) {
-      timeline.from(
-        controls,
-        {
-          autoAlpha: 0,
-          y: 10,
-          stagger: 0.05,
-          duration: 0.45,
-        },
-        0.4
-      );
-    }
-  }
-
-  function initSectionMotion(gsap, ScrollTrigger) {
-    revealBatch(
-      gsap,
-      ScrollTrigger,
-      ".devhub-flash, .devhub-products, .devhub-categories, .devhub-preorder, .devhub-broadbands, .devhub-archive__header, .devhub-archive__toolbar, .devhub-single__tabs, .devhub-account-wrap, .devhub-auth__card, .devhub-delivery-method",
       {
-        y: 28,
-        duration: 0.85,
-        stagger: 0.12,
+        rootMargin: "0px 0px -8% 0px",
+        threshold: 0.08,
       }
     );
 
-    revealBatch(
-      gsap,
-      ScrollTrigger,
-      ".devhub-products__grid .devhub-product-card, .devhub-archive__grid .devhub-product-card, .devhub-dashboard-card, .devhub-address-card, .devhub-empty-state__icon-wrap, .devhub-empty-state__text, .devhub-empty-state__actions",
-      {
-        y: 34,
-        scale: 0.975,
-        duration: 0.72,
-        stagger: 0.1,
-      }
-    );
-
-    revealBatch(
-      gsap,
-      ScrollTrigger,
-      ".devhub-single__gallery, .devhub-single__info > *, .wc-block-cart__main > *, .wc-block-cart__sidebar > *, .wc-block-checkout__main > *, .wc-block-checkout__sidebar > *, .devhub-account-sidebar > *, .devhub-account-content > *",
-      {
-        y: 22,
-        scale: 0.99,
-        duration: 0.7,
-        stagger: 0.06,
-      }
-    );
-  }
-
-  function initCardHover(gsap) {
-    var cards = document.querySelectorAll(
-      ".devhub-product-card, .devhub-dashboard-card, .devhub-address-card, .devhub-delivery-method__option, .devhub-delivery-method__store"
-    );
-
-    cards.forEach(function (card) {
-      var hoverTween = gsap.to(card, {
-        y: -6,
-        duration: 0.28,
-        ease: "power2.out",
-        paused: true,
-      });
-
-      card.addEventListener("mouseenter", function () {
-        hoverTween.play();
-      });
-
-      card.addEventListener("mouseleave", function () {
-        hoverTween.reverse();
-      });
+    scrollTargets.forEach(function (element) {
+      observer.observe(element);
     });
   }
 
   document.addEventListener("DOMContentLoaded", function () {
-    var gsap = window.gsap;
-    var ScrollTrigger = window.ScrollTrigger;
-
-    if (!gsap || prefersReducedMotion()) {
+    if (prefersReducedMotion()) {
+      document.documentElement.classList.add("devhub-motion-disabled");
+      document.documentElement.classList.remove("devhub-motion-ready");
       return;
     }
 
-    if (!registerPlugin(gsap, ScrollTrigger)) {
-      return;
+    if (!document.documentElement.classList.contains("devhub-motion-ready")) {
+      document.documentElement.classList.add("devhub-motion-ready");
     }
-
-    document.documentElement.classList.add("devhub-motion-ready");
-
-    initHeroMotion(gsap);
-    initSectionMotion(gsap, ScrollTrigger);
-    initCardHover(gsap);
-
-    ScrollTrigger.refresh();
+    revealPageContent();
+    revealOnScroll();
   });
 })();
