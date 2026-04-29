@@ -100,6 +100,7 @@ function devhub_enqueue_styles(): void
     devhub_style('devhub-header', '/components/header.css', ['devhub-style']);
     devhub_style('devhub-footer', '/components/footer.css', ['devhub-style']);
     devhub_style('devhub-product-card', '/components/product-card.css', ['devhub-style']);
+    devhub_style('devhub-toast', '/components/toast.css', ['devhub-style']);
     wp_add_inline_style('devhub-header', '
         #wf_header .product-categories .wf_navbar-nav .wf_navbar-mainmenu > li > a,
         #wf_header .product-categories .wf_navbar-nav .wf_navbar-mainmenu .dropdown-menu li > a {
@@ -258,6 +259,7 @@ function devhub_enqueue_scripts(): void
     wp_enqueue_script('shopire-custom', DEVHUB_URI . '/assets/js/custom.js', ['jquery'], null, true);
     devhub_script('devhub-page-loader', '/modules/page-loader.js', [], true);
     devhub_script('devhub-mobile-menu', '/modules/mobile-menu.js', [], true);
+    devhub_script('devhub-toast', '/modules/toast.js', [], true);
     // ── DeviceHub API utility — always loaded ─────────────────────────────────
     // Exposes devhubConfig to all JS modules: nonce, restUrl, cartUrl, isLoggedIn
     devhub_script('devhub-utils', '/utils/api.js', [], true);
@@ -288,7 +290,7 @@ function devhub_enqueue_scripts(): void
 
     // ── Single product ────────────────────────────────────────────────────────
     if (devhub_is_product_page()) {
-        devhub_script('devhub-product', '/modules/product.js', [], true);
+        devhub_script('devhub-product', '/modules/product.js', ['devhub-toast'], true);
     }
 
     // ── Cart ──────────────────────────────────────────────────────────────────

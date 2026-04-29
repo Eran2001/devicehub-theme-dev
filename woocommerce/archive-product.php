@@ -62,7 +62,8 @@ function devhub_archive_category_group(): void
         'taxonomy' => 'product_cat',
         'hide_empty' => true,
         'parent' => 0,
-        'orderby' => 'name',
+        'orderby' => 'menu_order',
+        'order' => 'ASC',
         'exclude' => [get_option('default_product_cat')],
     ]);
 

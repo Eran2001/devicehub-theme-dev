@@ -33,18 +33,11 @@
 }
 
 .devhub-product-card::before {
-  content: "";
-  position: absolute;
-  inset: 0 0 auto;
-  height: 72px;
-  background: linear-gradient(180deg, rgba(255, 102, 0, 0.06), transparent);
-  opacity: 0;
-  transition: opacity var(--devhub-transition-slow);
-  pointer-events: none;
+  display: none;
 }
 
 .devhub-product-card:hover::before {
-  opacity: 1;
+  opacity: 0;
 }
 
 /* ==========================================================================
@@ -57,7 +50,7 @@
   left: 14px;
   background: var(--devhub-primary);
   color: var(--devhub-white);
-  font-size: var(--devhub-text-md);
+  font-size: var(--devhub-text-lg);
   font-weight: 700;
   padding: 0.5rem 0.85rem;
   border-radius: var(--devhub-radius-full);
@@ -76,9 +69,7 @@
   height: 220px;
   overflow: hidden;
   border-radius: calc(var(--devhub-radius-md) - 2px);
-  background:
-    radial-gradient(circle at top, rgba(255, 102, 0, 0.08), transparent 58%),
-    var(--devhub-surface);
+  background: var(--devhub-white);
   margin-bottom: 14px;
 }
 
@@ -130,7 +121,7 @@
   display: inline-block;
   background: var(--devhub-primary-soft);
   color: var(--devhub-primary);
-  font-size: var(--devhub-text-sm);
+  font-size: var(--devhub-text-md);
   font-weight: 600;
   padding: 0.5rem 0.85rem;
   border-radius: var(--devhub-radius-full);

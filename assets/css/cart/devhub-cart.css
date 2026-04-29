@@ -21,6 +21,57 @@
   padding-top: 0 !important;
 }
 
+.woocommerce-cart .wc-block-grid__product-image,
+.woocommerce-cart .wc-block-grid__product-image:hover,
+.woocommerce-cart .wc-block-grid__product-image a,
+.woocommerce-cart .wc-block-grid__product-image a:hover,
+.woocommerce-cart .wc-block-components-product-image,
+.woocommerce-cart .wc-block-components-product-image:hover,
+.woocommerce-cart .wp-block-woocommerce-product-image,
+.woocommerce-cart .wp-block-woocommerce-product-image:hover,
+.woocommerce-cart .wp-block-woocommerce-product-image a,
+.woocommerce-cart .wp-block-woocommerce-product-image a:hover {
+  background: #fff !important;
+  background-color: #fff !important;
+  background-image: none !important;
+}
+
+.woocommerce-cart .wc-block-grid__product-image::before,
+.woocommerce-cart .wc-block-grid__product-image::after,
+.woocommerce-cart .wc-block-components-product-image::before,
+.woocommerce-cart .wc-block-components-product-image::after,
+.woocommerce-cart .wp-block-woocommerce-product-image::before,
+.woocommerce-cart .wp-block-woocommerce-product-image::after {
+  display: none !important;
+  background: transparent !important;
+}
+
+.woocommerce-cart .wc-block-grid__product,
+.woocommerce-cart .wc-block-grid__product:hover,
+.woocommerce-cart .wp-block-woocommerce-product-template .wc-block-grid__product,
+.woocommerce-cart .wp-block-woocommerce-product-template .wc-block-grid__product:hover,
+.woocommerce-cart .wp-block-woocommerce-product-template li,
+.woocommerce-cart .wp-block-woocommerce-product-template li:hover,
+.woocommerce-cart .wp-block-woocommerce-empty-cart-block .wc-block-grid__product,
+.woocommerce-cart .wp-block-woocommerce-empty-cart-block .wc-block-grid__product:hover,
+.woocommerce-cart .wp-block-woocommerce-empty-cart-block li,
+.woocommerce-cart .wp-block-woocommerce-empty-cart-block li:hover {
+  background: #fff !important;
+  background-color: #fff !important;
+  background-image: none !important;
+}
+
+.woocommerce-cart .wc-block-grid__product::before,
+.woocommerce-cart .wc-block-grid__product::after,
+.woocommerce-cart .wp-block-woocommerce-product-template li::before,
+.woocommerce-cart .wp-block-woocommerce-product-template li::after,
+.woocommerce-cart .wp-block-woocommerce-empty-cart-block li::before,
+.woocommerce-cart .wp-block-woocommerce-empty-cart-block li::after {
+  display: none !important;
+  background: transparent !important;
+  background-image: none !important;
+}
+
 .woocommerce-cart .wc-block-cart {
   padding-top: 0 !important;
 }

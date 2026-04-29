@@ -125,6 +125,8 @@
    ========================================================================== */
 
 .devhub-archive__toolbar {
+  position: relative;
+  z-index: 30;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -182,6 +184,7 @@
 /* Custom sort dropdown */
 .devhub-sort-dropdown {
   position: relative;
+  z-index: 40;
 }
 
 .devhub-sort-dropdown__trigger {
@@ -235,7 +238,7 @@
     opacity 0.18s ease,
     transform 0.18s ease,
     visibility 0.18s ease;
-  z-index: 100;
+  z-index: 1000;
 }
 
 .devhub-sort-dropdown--open .devhub-sort-dropdown__list {
@@ -270,6 +273,8 @@
    ========================================================================== */
 
 .devhub-archive__grid {
+  position: relative;
+  z-index: 1;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
@@ -289,7 +294,7 @@
 }
 
 .devhub-archive__grid .devhub-product-card__name {
-  font-size: var(--devhub-text-lg);
+  font-size: var(--devhub-text-xl);
 }
 
 .devhub-archive__grid .devhub-product-card__price {
@@ -303,7 +308,7 @@
 .devhub-archive__grid .devhub-product-card__stock {
   top: 12px;
   right: 12px;
-  font-size: var(--devhub-text-md);
+  font-size: var(--devhub-text-xl);
 }
 
 .devhub-archive__grid .devhub-product-card__badge {

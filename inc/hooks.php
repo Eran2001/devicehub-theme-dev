@@ -129,7 +129,7 @@ function devhub_render_orders_icon(): void
 
 // ── WooCommerce — archive products per page ───────────────────────────────────
 
-add_filter('loop_shop_per_page', fn() => 9, 20);
+add_filter('loop_shop_per_page', fn() => 12, 20);
 
 
 // ── WooCommerce — brand filter via URL param ?filter_brand=slug1,slug2 ────────
@@ -567,27 +567,42 @@ function devhub_get_secondary_brand_image_url(WP_Term $brand): string
     return '';
 }
 
-function devhub_get_secondary_brands(): array
+function devhub_get_secondary_brand_taxonomy(): string
 {
     foreach (['product_brand', 'pwb-brand', 'pa_brand'] as $taxonomy) {
         if (!taxonomy_exists($taxonomy)) {
             continue;
         }
 
-        $terms = get_terms([
-            'taxonomy' => $taxonomy,
-            'hide_empty' => true,
-            'orderby' => 'name',
-            'order' => 'ASC',
-            'number' => 36,
-        ]);
-
-        if (!is_wp_error($terms) && !empty($terms)) {
-            return $terms;
-        }
+        return $taxonomy;
     }
 
-    return [];
+    return '';
+}
+
+function devhub_get_secondary_brands(int $parent = -1): array
+{
+    $taxonomy = devhub_get_secondary_brand_taxonomy();
+
+    if ($taxonomy === '') {
+        return [];
+    }
+
+    $args = [
+        'taxonomy' => $taxonomy,
+        'hide_empty' => true,
+        'orderby' => 'name',
+        'order' => 'ASC',
+        'number' => 36,
+    ];
+
+    if ($parent >= 0) {
+        $args['parent'] = $parent;
+    }
+
+    $terms = get_terms($args);
+
+    return (!is_wp_error($terms) && !empty($terms)) ? $terms : [];
 }
 
 function devhub_get_secondary_categories(): array
@@ -601,7 +616,7 @@ function devhub_get_secondary_categories(): array
         'hide_empty' => false,
         'parent' => 0,
         'exclude' => get_option('default_product_cat'),
-        'orderby' => 'name',
+        'orderby' => 'menu_order',
         'order' => 'ASC',
     ]);
 
@@ -727,7 +742,12 @@ function devhub_render_secondary_offers(): void
 function devhub_render_secondary_nav(): void
 {
     $categories = devhub_get_secondary_categories();
-    $brands = devhub_get_secondary_brands();
+    $parent_brands = devhub_get_secondary_brands(0);
+    $child_brands = devhub_get_secondary_brands();
+    $child_brands = array_values(array_filter($child_brands, static function (WP_Term $brand): bool {
+        return (int) $brand->parent > 0;
+    }));
+    $brand_list = !empty($child_brands) ? $child_brands : $parent_brands;
     ?>
     <div class="devhub-secondary-nav wf-d-none wf-d-lg-block">
         <div class="devhub-secondary-nav__inner">
@@ -765,37 +785,41 @@ function devhub_render_secondary_nav(): void
                 <button class="devhub-secondary-nav__button" type="button" aria-haspopup="true">
                     <span><?php esc_html_e('Brands', 'devicehub-theme'); ?></span>
                 </button>
-                <?php if (!empty($brands)): ?>
+                <?php if (!empty($parent_brands) || !empty($brand_list)): ?>
                     <div class="devhub-secondary-nav__dropdown devhub-secondary-nav__dropdown--brands">
-                        <div class="devhub-secondary-nav__brand-featured">
-                            <h3><?php esc_html_e('Top Brands', 'devicehub-theme'); ?></h3>
-                            <div class="devhub-secondary-nav__brand-grid">
-                                <?php foreach (array_slice($brands, 0, 12) as $brand):
-                                    $image_url = devhub_get_secondary_brand_image_url($brand);
-                                    ?>
-                                    <a href="<?php echo esc_url(get_term_link($brand)); ?>"
-                                        class="devhub-secondary-nav__brand-logo">
-                                        <?php if ($image_url !== ''): ?>
-                                            <img src="<?php echo esc_url($image_url); ?>" alt="<?php echo esc_attr($brand->name); ?>">
-                                        <?php else: ?>
-                                            <span><?php echo esc_html($brand->name); ?></span>
-                                        <?php endif; ?>
-                                    </a>
-                                <?php endforeach; ?>
-                            </div>
-                        </div>
-                        <div class="devhub-secondary-nav__brand-list">
-                            <h3><?php esc_html_e('Brands', 'devicehub-theme'); ?></h3>
-                            <ul>
-                                <?php foreach ($brands as $brand): ?>
-                                    <li>
-                                        <a href="<?php echo esc_url(get_term_link($brand)); ?>">
-                                            <?php echo esc_html($brand->name); ?>
+                        <?php if (!empty($parent_brands)): ?>
+                            <div class="devhub-secondary-nav__brand-featured">
+                                <h3><?php esc_html_e('Top Brands', 'devicehub-theme'); ?></h3>
+                                <div class="devhub-secondary-nav__brand-grid">
+                                    <?php foreach (array_slice($parent_brands, 0, 12) as $brand):
+                                        $image_url = devhub_get_secondary_brand_image_url($brand);
+                                        ?>
+                                        <a href="<?php echo esc_url(get_term_link($brand)); ?>"
+                                            class="devhub-secondary-nav__brand-logo">
+                                            <?php if ($image_url !== ''): ?>
+                                                <img src="<?php echo esc_url($image_url); ?>" alt="<?php echo esc_attr($brand->name); ?>">
+                                            <?php else: ?>
+                                                <span><?php echo esc_html($brand->name); ?></span>
+                                            <?php endif; ?>
                                         </a>
-                                    </li>
-                                <?php endforeach; ?>
-                            </ul>
-                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+                        <?php if (!empty($brand_list)): ?>
+                            <div class="devhub-secondary-nav__brand-list">
+                                <h3><?php esc_html_e('Brands', 'devicehub-theme'); ?></h3>
+                                <ul>
+                                    <?php foreach ($brand_list as $brand): ?>
+                                        <li>
+                                            <a href="<?php echo esc_url(get_term_link($brand)); ?>">
+                                                <?php echo esc_html($brand->name); ?>
+                                            </a>
+                                        </li>
+                                    <?php endforeach; ?>
+                                </ul>
+                            </div>
+                        <?php endif; ?>
                     </div>
                 <?php endif; ?>
             </div>
@@ -1434,6 +1458,8 @@ function devhub_mobile_drawer_categories(): void
         'hide_empty' => false,
         'parent' => 0,
         'exclude' => get_term_by('slug', 'uncategorized', 'product_cat')->term_id ?? 0,
+        'orderby' => 'menu_order',
+        'order' => 'ASC',
     ]);
 
     if (empty($product_cat) || is_wp_error($product_cat)) {
@@ -1446,6 +1472,8 @@ function devhub_mobile_drawer_categories(): void
             'taxonomy' => 'product_cat',
             'hide_empty' => false,
             'parent' => $cat->term_id,
+            'orderby' => 'menu_order',
+            'order' => 'ASC',
         ]);
         $icon = get_term_meta($cat->term_id, 'shopire_product_cat_icon', true);
         $icon_html = $icon ? "<i class='" . esc_attr($icon) . " wf-mr-2'></i>" : '';

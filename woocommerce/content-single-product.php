@@ -285,31 +285,25 @@ $specs_is_active = !$has_features_tab && $has_specs_tab;
                         <i class="fas fa-shield-alt" aria-hidden="true"></i>
                         <?php esc_html_e('Guaranteed safe Checkout', 'devicehub-theme'); ?>
                     </p>
-                    <div class="devhub-single__payment-slider">
+                    <div class="devhub-single__payment-slider devhub-single__safe-payment-slider">
                         <button class="devhub-single__bundle-arrow devhub-single__payment-arrow devhub-single__payment-arrow--prev"
-                            id="devhubPaymentPrev" type="button" hidden
-                            aria-label="<?php esc_attr_e('Previous payment methods', 'devicehub-theme'); ?>">
+                            id="devhubPaymentPrev" type="button" aria-label="<?php esc_attr_e('Previous payment option', 'devicehub-theme'); ?>" hidden>
                             <i class="fas fa-chevron-left" aria-hidden="true"></i>
                         </button>
                         <div class="devhub-single__payment-viewport" id="devhubPaymentViewport">
-                            <div class="devhub-single__payment-icons">
-                                <?php if (!empty($payment_methods)): ?>
-                                    <?php foreach ($payment_methods as $payment_method): ?>
-                                        <span
-                                            class="devhub-single__payment-badge devhub-single__payment-badge--dynamic devhub-single__payment-badge--<?php echo esc_attr($payment_method['id']); ?>">
-                                            <?php echo esc_html($payment_method['title']); ?>
-                                        </span>
-                                    <?php endforeach; ?>
-                                <?php else: ?>
-                                    <span class="devhub-single__payment-badge devhub-single__payment-badge--dynamic">
-                                        <?php esc_html_e('Payment methods available at checkout', 'devicehub-theme'); ?>
-                                    </span>
-                                <?php endif; ?>
+                            <div class="devhub-single__safe-payment-grid">
+                                <img src="<?php echo esc_url(DEVHUB_URI . '/assets/images/cash-on-delivery.jpg'); ?>"
+                                    alt="<?php esc_attr_e('Cash on delivery', 'devicehub-theme'); ?>" loading="lazy">
+                                <img src="<?php echo esc_url(DEVHUB_URI . '/assets/images/visa-master-new.png'); ?>"
+                                    alt="<?php esc_attr_e('Visa and Mastercard', 'devicehub-theme'); ?>" loading="lazy">
+                                <img src="<?php echo esc_url(DEVHUB_URI . '/assets/images/koko.svg'); ?>"
+                                    alt="<?php esc_attr_e('KOKO payment option', 'devicehub-theme'); ?>" loading="lazy">
+                                <img src="<?php echo esc_url(DEVHUB_URI . '/assets/images/webx.svg'); ?>"
+                                    alt="<?php esc_attr_e('WebX payment option', 'devicehub-theme'); ?>" loading="lazy">
                             </div>
                         </div>
                         <button class="devhub-single__bundle-arrow devhub-single__payment-arrow devhub-single__payment-arrow--next"
-                            id="devhubPaymentNext" type="button" hidden
-                            aria-label="<?php esc_attr_e('Next payment methods', 'devicehub-theme'); ?>">
+                            id="devhubPaymentNext" type="button" aria-label="<?php esc_attr_e('Next payment option', 'devicehub-theme'); ?>" hidden>
                             <i class="fas fa-chevron-right" aria-hidden="true"></i>
                         </button>
                     </div>
@@ -453,36 +447,6 @@ $specs_is_active = !$has_features_tab && $has_specs_tab;
                 <?php endif; ?>
 
                 <!-- ── Cart form ────────────────────────────────────────── -->
-                <?php
-                $devhub_payment_offer_cards = [
-                    [
-                        'id' => 'webx',
-                        'image' => DEVHUB_URI . '/assets/images/webx.svg',
-                        'alt' => __('WebX payment option', 'devicehub-theme'),
-                    ],
-                    [
-                        'id' => 'koko',
-                        'image' => DEVHUB_URI . '/assets/images/koko.svg',
-                        'alt' => __('KOKO payment option', 'devicehub-theme'),
-                    ],
-                    [
-                        'id' => 'debit-credit-card',
-                        'image' => DEVHUB_URI . '/assets/images/visa-master-new.png',
-                        'alt' => __('Debit and credit card payment option', 'devicehub-theme'),
-                    ],
-                ];
-                ?>
-                <div class="devhub-single__payment-offers"
-                    aria-label="<?php esc_attr_e('Payment offers', 'devicehub-theme'); ?>">
-                    <?php foreach ($devhub_payment_offer_cards as $payment_offer_card): ?>
-                        <div
-                            class="devhub-single__payment-offer-card devhub-single__payment-offer-card--<?php echo esc_attr($payment_offer_card['id']); ?>">
-                            <img src="<?php echo esc_url($payment_offer_card['image']); ?>"
-                                alt="<?php echo esc_attr($payment_offer_card['alt']); ?>" loading="lazy">
-                        </div>
-                    <?php endforeach; ?>
-                </div>
-
                 <?php do_action('woocommerce_before_add_to_cart_form'); ?>
 
                 <form class="devhub-single__cart-form cart" method="post" enctype="multipart/form-data"

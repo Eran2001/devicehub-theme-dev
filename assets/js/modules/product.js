@@ -23,6 +23,27 @@
     devhubInitPromoCountdown();
   });
 
+  function showProductToast(message, type) {
+    var toastType = type || "warning";
+
+    if (window.devhubNotify && typeof window.devhubNotify[toastType] === "function") {
+      window.devhubNotify[toastType](message);
+      return;
+    }
+
+    if (typeof window.devhubToast === "function") {
+      window.devhubToast({
+        type: toastType,
+        message: message,
+      });
+      return;
+    }
+
+    if (window.console && typeof window.console.warn === "function") {
+      window.console.warn(message);
+    }
+  }
+
   // ── Tabs ──────────────────────────────────────────────────────────────────
 
   function devhubInitQuantityStepper() {
@@ -828,7 +849,7 @@
       cartForm.addEventListener("submit", function (event) {
         if ((cartBtn && cartBtn.disabled) || !varIdInput || varIdInput.value) return;
         event.preventDefault();
-        window.alert("Please select an available color and storage combination.");
+        showProductToast("Please select an available color and storage combination.");
       });
     }
   }
@@ -896,7 +917,7 @@
         if (!bundleRequired || !bundleInput) return;
         if (parseInt(bundleInput.value || "0", 10) > 0) return;
         event.preventDefault();
-        window.alert("Please select a bundle package to continue.");
+        showProductToast("Please select a bundle package to continue.");
       });
     }
 
