@@ -74,6 +74,19 @@
     var scrollIndex = 0;
     var defaultImages = [];
 
+    if (mainImg) {
+      mainImg.draggable = false;
+    }
+
+    if (mainImageBox) {
+      mainImageBox.addEventListener("dragstart", function (event) {
+        event.preventDefault();
+      });
+      mainImageBox.addEventListener("selectstart", function (event) {
+        event.preventDefault();
+      });
+    }
+
     try {
       defaultImages = JSON.parse(root.getAttribute("data-default-gallery") || "[]");
     } catch (e) {
@@ -112,7 +125,29 @@
 
     function getGap() {
       var styles = window.getComputedStyle(track);
-      return parseFloat(styles.gap || styles.rowGap || "0") || 0;
+      var gapProp = isVerticalMode() ? styles.rowGap : styles.columnGap;
+      return parseFloat(gapProp || styles.gap || "0") || 0;
+    }
+
+    function setArrowMode(isVertical) {
+      [prevBtn, nextBtn].forEach(function (btn) {
+        if (!btn) return;
+        btn.classList.toggle("devhub-single__gallery-arrow--vertical", isVertical);
+      });
+
+      if (prevBtn) {
+        var prevIcon = prevBtn.querySelector(".fas");
+        if (prevIcon) {
+          prevIcon.className = "fas " + (isVertical ? "fa-chevron-up" : "fa-chevron-left");
+        }
+      }
+
+      if (nextBtn) {
+        var nextIcon = nextBtn.querySelector(".fas");
+        if (nextIcon) {
+          nextIcon.className = "fas " + (isVertical ? "fa-chevron-down" : "fa-chevron-right");
+        }
+      }
     }
 
     function resetCarousel() {
@@ -132,16 +167,98 @@
       nextBtn.hidden = true;
     }
 
+    function resetThumbSizing(thumbs) {
+      thumbs.forEach(function (thumb) {
+        thumb.style.width = "";
+        thumb.style.height = "";
+        thumb.style.flex = "";
+      });
+    }
+
+    function getHorizontalMetrics(thumbs) {
+      var gap = getGap();
+      var viewportWidth = viewport.getBoundingClientRect().width;
+
+      if (viewportWidth <= 0 || !thumbs.length) {
+        return null;
+      }
+
+      var totalWidth = 0;
+      var visibleCount = 0;
+
+      thumbs.forEach(function (thumb, index) {
+        var thumbWidth = thumb.getBoundingClientRect().width;
+        if (thumbWidth <= 0) {
+          return;
+        }
+
+        var nextRight = totalWidth + thumbWidth;
+        if (nextRight <= viewportWidth + 1) {
+          visibleCount++;
+        }
+
+        totalWidth = nextRight + (index < thumbs.length - 1 ? gap : 0);
+      });
+
+      if (totalWidth <= viewportWidth + 1) {
+        visibleCount = thumbs.length;
+      }
+
+      visibleCount = Math.max(1, Math.min(visibleCount, thumbs.length));
+
+      return {
+        gap: gap,
+        hasOverflow: totalWidth > viewportWidth + 1,
+        maxStart: Math.max(thumbs.length - visibleCount, 0),
+        stepWidth: thumbs[0].getBoundingClientRect().width + gap,
+        visibleCount: visibleCount,
+        viewportWidth: viewportWidth,
+      };
+    }
+
+    function syncHorizontalCarousel(thumbs) {
+      slider.style.height = "";
+      viewport.style.height = "";
+      resetThumbSizing(thumbs);
+      track.style.transform = "";
+
+      var metrics = getHorizontalMetrics(thumbs);
+
+      if (!metrics || metrics.stepWidth <= metrics.gap) {
+        requestAnimationFrame(syncCarousel);
+        return;
+      }
+
+      scrollIndex = Math.max(0, Math.min(scrollIndex, metrics.maxStart));
+
+      prevBtn.hidden = !metrics.hasOverflow;
+      nextBtn.hidden = !metrics.hasOverflow;
+
+      track.style.transform = "translateX(-" + scrollIndex * metrics.stepWidth + "px)";
+
+      if (metrics.hasOverflow) {
+        prevBtn.style.visibility = scrollIndex <= 0 ? "hidden" : "visible";
+        nextBtn.style.visibility = scrollIndex >= metrics.maxStart ? "hidden" : "visible";
+      }
+    }
+
     function syncCarousel() {
       if (!slider || !viewport || !prevBtn || !nextBtn || !mainImageBox) {
         return;
       }
 
       var thumbs = getThumbs();
+      var verticalMode = isVerticalMode();
+      setArrowMode(verticalMode);
 
-      if (!thumbs.length || !isVerticalMode()) {
+      if (!thumbs.length) {
         scrollIndex = 0;
         resetCarousel();
+        return;
+      }
+
+      if (!verticalMode) {
+        syncHorizontalCarousel(thumbs);
         return;
       }
 
@@ -215,6 +332,16 @@
         } else if (activeIndex > scrollIndex + 1) {
           scrollIndex = activeIndex - 1;
         }
+      } else {
+        var metrics = getHorizontalMetrics(thumbs);
+        if (metrics) {
+          if (activeIndex < scrollIndex) {
+            scrollIndex = activeIndex;
+          } else if (activeIndex > scrollIndex + metrics.visibleCount - 1) {
+            scrollIndex = activeIndex - metrics.visibleCount + 1;
+          }
+          scrollIndex = Math.max(0, Math.min(scrollIndex, metrics.maxStart));
+        }
       }
 
       syncCarousel();
@@ -222,6 +349,11 @@
 
     function bindThumbClicks() {
       getThumbs().forEach(function (thumb, index) {
+        var img = thumb.querySelector("img");
+        if (img) {
+          img.draggable = false;
+        }
+
         if (thumb.dataset.devhubBound === "true") {
           return;
         }
@@ -257,7 +389,7 @@
           '">' +
           '<img src="' +
           escapeAttr(thumbSrc) +
-          '" alt="">' +
+          '" alt="" draggable="false">' +
           "</button>"
         );
       }).join("");
@@ -280,7 +412,11 @@
 
     if (nextBtn) {
       nextBtn.addEventListener("click", function () {
-        var maxStart = Math.max(getThumbs().length - 2, 0);
+        var thumbs = getThumbs();
+        var metrics = isVerticalMode() ? null : getHorizontalMetrics(thumbs);
+        var maxStart = isVerticalMode()
+          ? Math.max(thumbs.length - 2, 0)
+          : (metrics ? metrics.maxStart : 0);
         if (scrollIndex < maxStart) {
           scrollIndex++;
           syncCarousel();
@@ -775,6 +911,7 @@
     var img = document.createElement("img");
     img.className = "devhub-lightbox__img";
     img.alt = "";
+    img.draggable = false;
 
     var closeBtn = document.createElement("button");
     closeBtn.className = "devhub-lightbox__close";
@@ -804,6 +941,13 @@
     lightbox.appendChild(nextBtn);
     lightbox.appendChild(counter);
     document.body.appendChild(lightbox);
+
+    lightbox.addEventListener("dragstart", function (event) {
+      event.preventDefault();
+    });
+    lightbox.addEventListener("selectstart", function (event) {
+      event.preventDefault();
+    });
 
     var images = [];
     var currentIndex = 0;

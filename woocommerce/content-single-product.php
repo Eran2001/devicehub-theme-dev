@@ -219,7 +219,8 @@ $specs_is_active = !$has_features_tab && $has_specs_tab;
                 <div class="devhub-single__main-image">
                     <img src="<?php echo esc_url($main_img); ?>"
                         alt="<?php echo esc_attr($default_gallery[0]['alt']); ?>"
-                        data-full-src="<?php echo esc_url($default_gallery[0]['full_src'] ?? $main_img); ?>">
+                        data-full-src="<?php echo esc_url($default_gallery[0]['full_src'] ?? $main_img); ?>"
+                        draggable="false">
                 </div>
 
                 <div class="devhub-single__thumbnails-slider" id="devhubGallerySlider">
@@ -236,7 +237,7 @@ $specs_is_active = !$has_features_tab && $has_specs_tab;
                                     data-main-src="<?php echo esc_url($gallery_image['main_src']); ?>"
                                     data-alt="<?php echo esc_attr($gallery_image['alt']); ?>"
                                     aria-label="<?php echo esc_attr(sprintf(__('View image %d', 'devicehub-theme'), $i + 1)); ?>">
-                                    <img src="<?php echo esc_url($gallery_image['thumb_src']); ?>" alt="">
+                                    <img src="<?php echo esc_url($gallery_image['thumb_src']); ?>" alt="" draggable="false">
                                 </button>
                             <?php endforeach; ?>
                         </div>
