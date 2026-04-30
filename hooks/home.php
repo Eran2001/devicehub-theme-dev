@@ -167,18 +167,6 @@ function devhub_render_categories_section(): void
     <?php
 }
 
-add_action('devhub_before_broadbands_banner_section', function (): void {
-    devhub_render_promo_banner_section('before_broadbands', __('Promo banner before broad bands', 'devicehub-theme'));
-});
-
-add_action('devhub_before_electronics_banner_section', function (): void {
-    devhub_render_promo_banner_section('before_electronics', __('Promo banner before electronics', 'devicehub-theme'));
-});
-
-add_action('devhub_before_accessories_banner_section', function (): void {
-    devhub_render_promo_banner_section('before_accessories', __('Promo banner before accessories', 'devicehub-theme'));
-});
-
 function devhub_render_promo_banner_section(string $placement, string $aria_label): void
 {
     $banners = devhub_get_promo_banners_by_placement($placement);

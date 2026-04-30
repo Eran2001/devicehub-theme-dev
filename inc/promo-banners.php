@@ -49,11 +49,72 @@ function devhub_register_promo_banners(): void
 
 function devhub_get_promo_banner_placements(): array
 {
-    return [
-        'before_broadbands'  => __('Before Broad Bands', 'devicehub-theme'),
-        'before_electronics' => __('Before Electronics', 'devicehub-theme'),
-        'before_accessories' => __('Before Accessories', 'devicehub-theme'),
+    $placements = [];
+
+    foreach (devhub_get_promo_banner_categories() as $category) {
+        $placements[devhub_get_promo_banner_category_placement($category)] = sprintf(
+            __('After %s', 'devicehub-theme'),
+            $category->name
+        );
+    }
+
+    return $placements;
+}
+
+function devhub_get_promo_banner_categories(): array
+{
+    if (!taxonomy_exists('product_cat')) {
+        return [];
+    }
+
+    $excluded_ids = [];
+    $default_product_cat = (int) get_option('default_product_cat');
+
+    if ($default_product_cat > 0) {
+        $excluded_ids[] = $default_product_cat;
+    }
+
+    foreach (['uncategorized', 'flash-sale'] as $slug) {
+        $term = get_term_by('slug', $slug, 'product_cat');
+
+        if ($term instanceof WP_Term) {
+            $excluded_ids[] = (int) $term->term_id;
+        }
+    }
+
+    $categories = get_terms([
+        'taxonomy' => 'product_cat',
+        'hide_empty' => true,
+        'parent' => 0,
+        'exclude' => array_values(array_unique(array_filter($excluded_ids))),
+        'orderby' => 'menu_order',
+        'order' => 'ASC',
+    ]);
+
+    if (empty($categories) || is_wp_error($categories)) {
+        return [];
+    }
+
+    return array_values(array_filter($categories, static function ($category): bool {
+        return $category instanceof WP_Term && (int) $category->count > 0;
+    }));
+}
+
+function devhub_get_promo_banner_category_placement(WP_Term $category): string
+{
+    return 'after_' . sanitize_key($category->slug);
+}
+
+function devhub_get_legacy_promo_banner_placements(string $placement): array
+{
+    $legacy_placements = [
+        'after_broad-bands' => ['before_broadbands'],
+        'after_broadbands' => ['before_broadbands'],
+        'after_electronics' => ['before_electronics'],
+        'after_accessories' => ['before_accessories'],
     ];
+
+    return $legacy_placements[$placement] ?? [];
 }
 
 function devhub_get_promo_banner_link(int $post_id): string
@@ -67,6 +128,8 @@ function devhub_get_promo_banners_by_placement(string $placement): array
         return [];
     }
 
+    $placement_values = array_merge([$placement], devhub_get_legacy_promo_banner_placements($placement));
+
     return get_posts([
         'post_type'      => 'devhub_promo_banner',
         'post_status'    => 'publish',
@@ -76,7 +139,8 @@ function devhub_get_promo_banners_by_placement(string $placement): array
             'date'       => 'DESC',
         ],
         'meta_key'       => DEVHUB_PROMO_BANNER_PLACEMENT_META,
-        'meta_value'     => $placement,
+        'meta_value'     => count($placement_values) > 1 ? $placement_values : $placement,
+        'meta_compare'   => count($placement_values) > 1 ? 'IN' : '=',
         'no_found_rows'  => true,
     ]);
 }

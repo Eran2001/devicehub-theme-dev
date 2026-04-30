@@ -1089,6 +1089,7 @@
 .devhub-single__tabs {
   border-top: 1px solid var(--devhub-border);
   margin-top: 8px;
+  min-width: 0;
 }
 
 .devhub-single__tab-nav {
@@ -1106,19 +1107,42 @@
   font-size: var(--devhub-text-2xl);
   font-weight: 500;
   color: var(--devhub-mid);
-  background: none;
-  border: 1.5px solid transparent;
+  background: var(--devhub-white);
+  border: 1.5px solid var(--devhub-white);
   border-radius: var(--devhub-radius-sm);
   cursor: pointer;
+  outline: 0 !important;
+  box-shadow: none !important;
+  appearance: none;
+  -webkit-appearance: none;
+  -webkit-tap-highlight-color: transparent;
   transition:
-    color var(--devhub-transition),
-    border-color var(--devhub-transition),
-    background var(--devhub-transition);
+    color 0.14s ease,
+    border-color 0.14s ease,
+    background 0.14s ease,
+    box-shadow 0.14s ease;
 }
 
 .devhub-single__tab-btn:hover:not(.devhub-single__tab-btn--active) {
-  color: var(--devhub-dark);
-  border-color: var(--devhub-border);
+  color: var(--devhub-primary);
+  border-color: var(--devhub-primary);
+  background: var(--devhub-white);
+  box-shadow: none !important;
+}
+
+.devhub-single__tab-btn:focus,
+.devhub-single__tab-btn:focus-visible,
+.devhub-single__tab-btn:active {
+  outline: 0 !important;
+  box-shadow: none !important;
+}
+
+.devhub-single__tab-btn:focus:not(.devhub-single__tab-btn--active),
+.devhub-single__tab-btn:focus-visible:not(.devhub-single__tab-btn--active),
+.devhub-single__tab-btn:active:not(.devhub-single__tab-btn--active) {
+  color: var(--devhub-mid);
+  border-color: var(--devhub-white);
+  background: var(--devhub-white);
 }
 
 .devhub-single__tab-btn--active {
@@ -1130,6 +1154,7 @@
 
 .devhub-single__tab-panel {
   display: none;
+  min-width: 0;
 }
 .devhub-single__tab-panel--active {
   display: block;
@@ -1147,10 +1172,12 @@
 .devhub-single__feature-cards {
   display: grid;
   gap: 18px;
+  min-width: 0;
 }
 
 .devhub-single__feature-card {
   background: var(--devhub-surface-elevated);
+  min-width: 0;
 }
 
 .devhub-single__feature-title {
@@ -1453,7 +1480,7 @@
   }
   .devhub-single__tab-btn {
     padding: 12px 16px;
-    font-size: var(--devhub-text-lg);
+    font-size: var(--devhub-text-xl);
   }
   .devhub-single__features-content {
     display: block;
@@ -1488,49 +1515,61 @@
     width: 340px;
     min-width: 340px;
   }
-  .devhub-single__specs-table,
-  .devhub-single__specs-table tbody,
-  .devhub-single__specs-table tr,
-  .devhub-single__specs-table td {
-    display: block;
-    width: 100% !important;
+  #devhubTabSpecs {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: scroll !important;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 8px;
+    touch-action: pan-x pan-y;
   }
+
   .devhub-single__specs-table {
+    min-width: 860px;
+    width: 860px;
+    max-width: none !important;
     border: 1px solid var(--devhub-border);
     border-radius: var(--devhub-radius-md);
     overflow: hidden;
     background: var(--devhub-white);
   }
+
   .devhub-single__specs-table tr {
-    padding: 0;
     border-bottom: 1px solid var(--devhub-border);
   }
+
   .devhub-single__specs-table tr:last-child {
     border-bottom: 0;
   }
+
   .devhub-single__spec-group {
-    padding: 12px 16px;
-    border-right: 0;
-    border-bottom: 1px solid var(--devhub-border);
-    background: var(--devhub-bg);
-    font-size: var(--devhub-text-xl);
+    width: 160px;
+    min-width: 160px;
+    padding: 14px 20px;
+    border-right: 1px solid var(--devhub-border);
+    border-bottom: 0;
+    font-size: var(--devhub-text-2xl);
   }
+
   .devhub-single__spec-label,
   .devhub-single__spec-value {
-    padding: 10px 16px;
-    font-size: var(--devhub-text-lg);
+    padding: 14px 20px;
+    font-size: var(--devhub-text-2xl);
     line-height: 1.45;
     white-space: normal;
     overflow-wrap: normal;
     word-break: normal;
   }
+
   .devhub-single__spec-label {
-    padding-bottom: 4px;
+    width: 260px;
+    min-width: 260px;
     color: var(--devhub-mid);
-    font-weight: 600;
   }
+
   .devhub-single__spec-value {
-    padding-top: 0;
+    min-width: 440px;
   }
   .devhub-single__bundles-slider {
     overflow: visible;

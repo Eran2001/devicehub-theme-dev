@@ -177,26 +177,13 @@ add_action('devhub_home_product_sections', 'devhub_render_home_product_sections'
 
 function devhub_render_home_product_sections(): void
 {
-    if (!devhub_has_catalog_data() || !taxonomy_exists('product_cat')) {
+    if (!devhub_has_catalog_data() || !function_exists('devhub_get_promo_banner_categories')) {
         return;
     }
 
-    $excluded_ids = [(int) get_option('default_product_cat')];
-    $flash_sale = get_term_by('slug', 'flash-sale', 'product_cat');
+    $categories = devhub_get_promo_banner_categories();
 
-    if ($flash_sale instanceof WP_Term) {
-        $excluded_ids[] = (int) $flash_sale->term_id;
-    }
-
-    $categories = get_terms([
-        'taxonomy' => 'product_cat',
-        'hide_empty' => true,
-        'exclude' => array_filter($excluded_ids),
-        'orderby' => 'menu_order',
-        'order' => 'ASC',
-    ]);
-
-    if (empty($categories) || is_wp_error($categories)) {
+    if (empty($categories)) {
         return;
     }
 
@@ -212,8 +199,6 @@ function devhub_render_home_product_sections(): void
             $view_all_url = function_exists('wc_get_page_permalink') ? wc_get_page_permalink('shop') : home_url('/');
         }
 
-        devhub_render_home_section_banner_before_category($category->slug);
-
         devhub_render_product_section(
             $category->name,
             $section_id,
@@ -221,23 +206,15 @@ function devhub_render_home_product_sections(): void
             DEVHUB_URI . '/assets/images/Original-Img.svg',
             (string) $view_all_url
         );
+
+        devhub_render_promo_banner_section(
+            devhub_get_promo_banner_category_placement($category),
+            sprintf(
+                __('Promo banner after %s', 'devicehub-theme'),
+                $category->name
+            )
+        );
     }
-}
-
-function devhub_render_home_section_banner_before_category(string $category_slug): void
-{
-    $banner_actions = [
-        'broad-bands' => 'devhub_before_broadbands_banner_section',
-        'broadbands' => 'devhub_before_broadbands_banner_section',
-        'electronics' => 'devhub_before_electronics_banner_section',
-        'accessories' => 'devhub_before_accessories_banner_section',
-    ];
-
-    if (!isset($banner_actions[$category_slug])) {
-        return;
-    }
-
-    do_action($banner_actions[$category_slug]);
 }
 
 add_action('devhub_mobile_phones_section', 'devhub_render_mobile_phones_section');

@@ -225,7 +225,7 @@
 @media (hover: hover) and (pointer: fine) {
   .devhub-product-card__action {
     position: absolute;
-    top: 50%;
+    top: 65%;
     left: 0;
     right: 0;
     z-index: 4;

@@ -99,14 +99,11 @@
     tabBtns.forEach(function (btn) {
       btn.addEventListener("click", function () {
         var target = btn.getAttribute("data-tab");
+        if (btn.classList.contains("devhub-single__tab-btn--active")) return;
 
         tabBtns.forEach(function (b) {
           b.classList.remove("devhub-single__tab-btn--active");
           b.setAttribute("aria-selected", "false");
-        });
-        tabPanels.forEach(function (p) {
-          p.classList.remove("devhub-single__tab-panel--active");
-          p.setAttribute("hidden", "");
         });
 
         btn.classList.add("devhub-single__tab-btn--active");
@@ -114,11 +111,18 @@
 
         var panelId =
           "devhubTab" + target.charAt(0).toUpperCase() + target.slice(1);
-        var panel = document.getElementById(panelId);
-        if (panel) {
-          panel.classList.add("devhub-single__tab-panel--active");
-          panel.removeAttribute("hidden");
-        }
+
+        window.requestAnimationFrame(function () {
+          tabPanels.forEach(function (p) {
+            var isTarget = p.id === panelId;
+            p.classList.toggle("devhub-single__tab-panel--active", isTarget);
+            if (isTarget) {
+              p.removeAttribute("hidden");
+            } else {
+              p.setAttribute("hidden", "");
+            }
+          });
+        });
       });
     });
   }
