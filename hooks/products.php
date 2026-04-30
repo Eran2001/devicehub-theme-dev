@@ -65,24 +65,48 @@ function devhub_render_product_section(
 
             <div class="devhub-products__header">
                 <h2 class="devhub-products__title"><?php echo esc_html($title); ?></h2>
-                <?php if (!empty($section_brands)): ?>
-                    <div class="devhub-products__brands" aria-label="<?php echo esc_attr(sprintf(__('%s brands', 'devicehub-theme'), $title)); ?>">
+                <?php if (!empty($section_brands)):
+                    $brand_filter_count = count($section_brands) + 1;
+                    ?>
+                    <div class="devhub-products__brand-filter"
+                        style="--devhub-brand-count: <?php echo esc_attr((string) min(10, $brand_filter_count)); ?>;"
+                        aria-label="<?php echo esc_attr(sprintf(__('%s brands', 'devicehub-theme'), $title)); ?>">
                         <button type="button"
-                            class="devhub-brand-tab devhub-brand-tab--active"
-                            data-section="<?php echo esc_attr($section_id); ?>"
-                            data-brand="all"
-                            aria-pressed="true">
-                            <?php esc_html_e('All', 'devicehub-theme'); ?>
+                            class="devhub-products__brand-nav devhub-products__brand-nav--prev"
+                            data-brand-scroll="<?php echo esc_attr($section_id); ?>"
+                            data-brand-direction="prev"
+                            aria-label="<?php esc_attr_e('Previous brands', 'devicehub-theme'); ?>">
+                            <i class="fas fa-chevron-left" aria-hidden="true"></i>
                         </button>
-                        <?php foreach ($section_brands as $brand): ?>
-                            <button type="button"
-                                class="devhub-brand-tab"
-                                data-section="<?php echo esc_attr($section_id); ?>"
-                                data-brand="<?php echo esc_attr($brand->slug); ?>"
-                                aria-pressed="false">
-                                <?php echo esc_html($brand->name); ?>
-                            </button>
-                        <?php endforeach; ?>
+
+                        <div class="devhub-products__brands-viewport">
+                            <div class="devhub-products__brands">
+                                <button type="button"
+                                    class="devhub-brand-tab devhub-brand-tab--active"
+                                    data-section="<?php echo esc_attr($section_id); ?>"
+                                    data-brand="all"
+                                    aria-pressed="true">
+                                    <?php esc_html_e('All', 'devicehub-theme'); ?>
+                                </button>
+                                <?php foreach ($section_brands as $brand): ?>
+                                    <button type="button"
+                                        class="devhub-brand-tab"
+                                        data-section="<?php echo esc_attr($section_id); ?>"
+                                        data-brand="<?php echo esc_attr($brand->slug); ?>"
+                                        aria-pressed="false">
+                                        <?php echo esc_html($brand->name); ?>
+                                    </button>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+
+                        <button type="button"
+                            class="devhub-products__brand-nav devhub-products__brand-nav--next"
+                            data-brand-scroll="<?php echo esc_attr($section_id); ?>"
+                            data-brand-direction="next"
+                            aria-label="<?php esc_attr_e('Next brands', 'devicehub-theme'); ?>">
+                            <i class="fas fa-chevron-right" aria-hidden="true"></i>
+                        </button>
                     </div>
                 <?php endif; ?>
             </div>

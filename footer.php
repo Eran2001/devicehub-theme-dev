@@ -9,6 +9,7 @@
     $address = trim((string) ($footer_settings['address'] ?? ''));
     $phone = trim((string) ($footer_settings['phone'] ?? ''));
     $email = trim((string) ($footer_settings['email'] ?? ''));
+    $copyright_text = trim((string) ($footer_settings['copyright_text'] ?? ''));
     $phone_href = function_exists('devhub_get_footer_phone_href') ? devhub_get_footer_phone_href($phone) : '';
     $google_play_url = trim((string) ($footer_settings['google_play_url'] ?? '#'));
     $app_store_url = trim((string) ($footer_settings['app_store_url'] ?? '#'));
@@ -116,6 +117,11 @@
         </div>
 
     </div>
+    <?php if ($copyright_text !== ''): ?>
+        <div class="dh-footer__copyright wf-container">
+            <?php echo wp_kses_post($copyright_text); ?>
+        </div>
+    <?php endif; ?>
 </footer>
 <?php
 do_action('shopire_top_scroller');

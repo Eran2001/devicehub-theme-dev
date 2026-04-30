@@ -308,7 +308,9 @@
 }
 
 #wf_header .devhub-secondary-nav__item:hover > .devhub-secondary-nav__button,
-#wf_header .devhub-secondary-nav__item:focus-within > .devhub-secondary-nav__button,
+#wf_header
+  .devhub-secondary-nav__item:focus-within
+  > .devhub-secondary-nav__button,
 #wf_header .devhub-secondary-nav__links > li > a:hover,
 #wf_header .devhub-secondary-nav__links > li > a:focus-visible,
 #wf_header .devhub-secondary-nav__contact a:hover,
@@ -319,7 +321,9 @@
 }
 
 #wf_header .devhub-secondary-nav__item:hover > .devhub-secondary-nav__button,
-#wf_header .devhub-secondary-nav__item:focus-within > .devhub-secondary-nav__button {
+#wf_header
+  .devhub-secondary-nav__item:focus-within
+  > .devhub-secondary-nav__button {
   color: var(--devhub-primary);
 }
 
@@ -389,7 +393,9 @@
 }
 
 #wf_header .devhub-secondary-nav__item:hover > .devhub-secondary-nav__dropdown,
-#wf_header .devhub-secondary-nav__item:focus-within > .devhub-secondary-nav__dropdown {
+#wf_header
+  .devhub-secondary-nav__item:focus-within
+  > .devhub-secondary-nav__dropdown {
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
@@ -399,8 +405,20 @@
 
 #wf_header .devhub-secondary-nav__dropdown--categories {
   width: 320px;
-  max-height: calc(100vh - 170px);
-  overflow-y: auto;
+  max-height: 480px;
+  overflow: visible;
+}
+
+#wf_header .devhub-secondary-nav__cat-list {
+  max-height: none;
+  overflow: visible;
+}
+
+#wf_header .devhub-secondary-nav__cat-list--scroll {
+  max-height: 480px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
 }
 
 #wf_header .devhub-secondary-nav__dropdown--categories ul,
@@ -421,6 +439,74 @@
   font-weight: 600;
   text-decoration: none;
   transition: color var(--devhub-transition);
+}
+
+#wf_header .devhub-secondary-nav__dropdown--categories li {
+  position: relative;
+}
+
+#wf_header .devhub-secondary-nav__dropdown--categories a > span:last-of-type {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+#wf_header .devhub-secondary-nav__cat-arrow {
+  margin-left: auto;
+  color: var(--devhub-muted);
+  font-size: 12px;
+  transition:
+    color var(--devhub-transition),
+    transform var(--devhub-transition);
+}
+
+#wf_header .devhub-secondary-nav__cat-children {
+  position: absolute;
+  top: 0;
+  left: 100%;
+  min-width: 240px;
+  margin: 0;
+  padding: 6px 0 !important;
+  background: var(--devhub-white);
+  border: 1px solid var(--devhub-border);
+  box-shadow: 0 24px 54px rgba(15, 23, 42, 0.14);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateX(10px);
+  transition:
+    opacity var(--devhub-transition),
+    visibility var(--devhub-transition),
+    transform var(--devhub-transition);
+}
+
+#wf_header .devhub-secondary-nav__cat-children a {
+  min-height: 38px;
+  padding: 7px 18px;
+  font-size: 14px;
+}
+
+#wf_header
+  .devhub-secondary-nav__cat-has-children:hover
+  > .devhub-secondary-nav__cat-children,
+#wf_header
+  .devhub-secondary-nav__cat-has-children:focus-within
+  > .devhub-secondary-nav__cat-children {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateX(0);
+}
+
+#wf_header
+  .devhub-secondary-nav__cat-has-children:hover
+  > a
+  .devhub-secondary-nav__cat-arrow,
+#wf_header
+  .devhub-secondary-nav__cat-has-children:focus-within
+  > a
+  .devhub-secondary-nav__cat-arrow {
+  color: var(--devhub-primary);
+  transform: translateX(2px);
 }
 
 #wf_header .devhub-secondary-nav__cat-icon {
@@ -596,7 +682,9 @@
   pointer-events: auto;
 }
 
-#wf_header .devhub-header-search-panel__section + .devhub-header-search-panel__section {
+#wf_header
+  .devhub-header-search-panel__section
+  + .devhub-header-search-panel__section {
   margin-top: 18px;
   padding-top: 18px;
   border-top: 1px solid var(--devhub-border);
@@ -1100,7 +1188,11 @@ div.shopping-cart ul.cart-items::-webkit-scrollbar {
 #wf_header .widget_shopping_cart ul.product_list_widget li a:not(.remove),
 #wf_header .widget_shopping_cart ul.product_list_widget li a:not(.remove):hover,
 #wf_header .widget_shopping_cart ul.product_list_widget li a:not(.remove):focus,
-#wf_header .widget_shopping_cart ul.product_list_widget li a:not(.remove):focus-visible {
+#wf_header
+  .widget_shopping_cart
+  ul.product_list_widget
+  li
+  a:not(.remove):focus-visible {
   border: 0 !important;
   outline: 0 !important;
   box-shadow: none !important;
@@ -1311,8 +1403,18 @@ body:not(.woocommerce-cart)
   transform: translateY(-50%) rotate(-45deg);
 }
 
-#wf_header .product-categories .wf_navbar-nav .wf_navbar-mainmenu > li:hover > a,
-#wf_header .product-categories .wf_navbar-nav .wf_navbar-mainmenu > li:focus-within > a,
+#wf_header
+  .product-categories
+  .wf_navbar-nav
+  .wf_navbar-mainmenu
+  > li:hover
+  > a,
+#wf_header
+  .product-categories
+  .wf_navbar-nav
+  .wf_navbar-mainmenu
+  > li:focus-within
+  > a,
 #wf_header
   .product-categories
   .wf_navbar-nav
@@ -1331,7 +1433,11 @@ body:not(.woocommerce-cart)
   background: rgba(255, 107, 0, 0.08);
 }
 
-#wf_header .product-categories .wf_navbar-nav .wf_navbar-mainmenu .dropdown-menu {
+#wf_header
+  .product-categories
+  .wf_navbar-nav
+  .wf_navbar-mainmenu
+  .dropdown-menu {
   min-width: 220px;
   padding: 10px;
   border: 1px solid rgba(228, 231, 236, 0.95);
@@ -1340,7 +1446,11 @@ body:not(.woocommerce-cart)
   box-shadow: 0 18px 40px rgba(16, 24, 40, 0.12);
 }
 
-#wf_header .product-categories .wf_navbar-nav .wf_navbar-mainmenu .dropdown-menu::before {
+#wf_header
+  .product-categories
+  .wf_navbar-nav
+  .wf_navbar-mainmenu
+  .dropdown-menu::before {
   top: 20px;
   left: -8px;
   width: 16px;
@@ -1350,7 +1460,12 @@ body:not(.woocommerce-cart)
   background: var(--devhub-white);
 }
 
-#wf_header .product-categories .wf_navbar-nav .wf_navbar-mainmenu .dropdown-menu li {
+#wf_header
+  .product-categories
+  .wf_navbar-nav
+  .wf_navbar-mainmenu
+  .dropdown-menu
+  li {
   margin: 0;
 }
 
@@ -1365,12 +1480,20 @@ body:not(.woocommerce-cart)
 }
 
 @media (max-width: 991px) {
-  #wf_header .product-categories .wf_navbar-nav .wf_navbar-mainmenu .dropdown-menu {
+  #wf_header
+    .product-categories
+    .wf_navbar-nav
+    .wf_navbar-mainmenu
+    .dropdown-menu {
     min-width: 0;
     box-shadow: none;
   }
 
-  #wf_header .product-categories .wf_navbar-nav .wf_navbar-mainmenu .dropdown-menu::before {
+  #wf_header
+    .product-categories
+    .wf_navbar-nav
+    .wf_navbar-mainmenu
+    .dropdown-menu::before {
     display: none;
   }
 }
@@ -1397,6 +1520,20 @@ body.devhub-mobile-menu-locked {
   touch-action: none;
 }
 
+@media (max-width: 991px) {
+  body.devhub-mobile-menu-locked #wf_header .wf_mobilenav {
+    z-index: 1000000 !important;
+  }
+
+  body.devhub-mobile-menu-locked #wf_header .wf_mobilenav-mainmenu-content {
+    z-index: 1000001 !important;
+  }
+
+  body.devhub-mobile-menu-locked #wf_header .wf_mobilenav-mainmenu-inner,
+  body.devhub-mobile-menu-locked #wf_header .wf_header-closemenu {
+    z-index: 1000002 !important;
+  }
+}
 
 /* ==========================================================================
    6. Header border bottom
@@ -1433,7 +1570,6 @@ body.devhub-mobile-menu-locked {
 #wf_header .wf_mobilenav-mainmenu-toggle span {
   background-color: var(--devhub-primary);
 }
-
 
 /* ── Shopire page-title banner — hidden on all WooCommerce pages ─────────────
    Backup for the PHP filter in inc/hooks.php. WooCommerce adds these body

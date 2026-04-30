@@ -742,17 +742,8 @@ function devhub_render_product_card(WC_Product $product, string $img_override = 
 
     if ($card_action_disabled) {
         $card_action_label = __('Out of Stock', 'devicehub-theme');
-    } elseif ($product->is_type('variable')) {
-        $card_action_label = __('Select Options', 'devicehub-theme');
     } elseif ($product->is_purchasable()) {
         $card_action_label = __('Buy Now', 'devicehub-theme');
-        $card_action_url = add_query_arg(
-            [
-                'add-to-cart' => $product->get_id(),
-                'quantity' => 1,
-            ],
-            function_exists('wc_get_checkout_url') ? wc_get_checkout_url() : $permalink
-        );
     }
     ?>
     <div class="devhub-product-card" data-brands="<?php echo esc_attr($brand_slugs); ?>">
@@ -782,20 +773,22 @@ function devhub_render_product_card(WC_Product $product, string $img_override = 
                 <?php echo esc_html($name); ?>
             </a>
 
-            <?php if ($has_bundle): ?>
-                <span class="devhub-product-card__bundle">Bundle Package</span>
-            <?php endif; ?>
-
             <div class="devhub-product-card__price">
                 <?php echo wp_kses_post(devhub_get_product_card_price_html($product)); ?>
             </div>
 
             <?php if ($card_action_disabled): ?>
                 <span class="devhub-product-card__action devhub-product-card__action--disabled">
+                    <?php if ($has_bundle): ?>
+                        <span class="devhub-product-card__action-icon" aria-hidden="true"></span>
+                    <?php endif; ?>
                     <?php echo esc_html($card_action_label); ?>
                 </span>
             <?php else: ?>
                 <a href="<?php echo esc_url($card_action_url); ?>" class="devhub-product-card__action">
+                    <?php if ($has_bundle): ?>
+                        <span class="devhub-product-card__action-icon" aria-hidden="true"></span>
+                    <?php endif; ?>
                     <?php echo esc_html($card_action_label); ?>
                 </a>
             <?php endif; ?>

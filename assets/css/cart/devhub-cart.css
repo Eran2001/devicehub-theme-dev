@@ -72,6 +72,44 @@
   background-image: none !important;
 }
 
+.woocommerce-cart .wp-block-woocommerce-empty-cart-block .wc-block-grid__product-price,
+.woocommerce-checkout .wp-block-woocommerce-empty-cart-block .wc-block-grid__product-price,
+.woocommerce-cart .wp-block-woocommerce-empty-cart-block .wc-block-components-product-price,
+.woocommerce-checkout .wp-block-woocommerce-empty-cart-block .wc-block-components-product-price {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+
+.woocommerce-cart .wp-block-woocommerce-empty-cart-block .wc-block-grid__product-price ins,
+.woocommerce-checkout .wp-block-woocommerce-empty-cart-block .wc-block-grid__product-price ins,
+.woocommerce-cart .wp-block-woocommerce-empty-cart-block .wc-block-components-product-price__value,
+.woocommerce-checkout .wp-block-woocommerce-empty-cart-block .wc-block-components-product-price__value {
+  order: 1;
+  text-decoration: none !important;
+}
+
+.woocommerce-cart .wp-block-woocommerce-empty-cart-block .wc-block-grid__product-price del,
+.woocommerce-checkout .wp-block-woocommerce-empty-cart-block .wc-block-grid__product-price del,
+.woocommerce-cart .wp-block-woocommerce-empty-cart-block .wc-block-components-product-price__regular,
+.woocommerce-checkout .wp-block-woocommerce-empty-cart-block .wc-block-components-product-price__regular {
+  order: 2;
+  color: #8f8f8f !important;
+}
+
+.woocommerce-cart .wp-block-woocommerce-empty-cart-block .wc-block-grid__product-price del .woocommerce-Price-amount,
+.woocommerce-cart .wp-block-woocommerce-empty-cart-block .wc-block-grid__product-price del .woocommerce-Price-amount bdi,
+.woocommerce-cart .wp-block-woocommerce-empty-cart-block .wc-block-grid__product-price del .woocommerce-Price-amount bdi *,
+.woocommerce-checkout .wp-block-woocommerce-empty-cart-block .wc-block-grid__product-price del .woocommerce-Price-amount,
+.woocommerce-checkout .wp-block-woocommerce-empty-cart-block .wc-block-grid__product-price del .woocommerce-Price-amount bdi,
+.woocommerce-checkout .wp-block-woocommerce-empty-cart-block .wc-block-grid__product-price del .woocommerce-Price-amount bdi *,
+.woocommerce-cart .wp-block-woocommerce-empty-cart-block .wc-block-components-product-price__regular,
+.woocommerce-checkout .wp-block-woocommerce-empty-cart-block .wc-block-components-product-price__regular {
+  color: #8f8f8f !important;
+}
+
 .woocommerce-cart .wc-block-cart {
   padding-top: 0 !important;
 }

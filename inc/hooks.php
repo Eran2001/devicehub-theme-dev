@@ -591,7 +591,7 @@ function devhub_get_secondary_brands(int $parent = -1): array
     $args = [
         'taxonomy' => $taxonomy,
         'hide_empty' => true,
-        'orderby' => 'name',
+        'orderby' => 'menu_order',
         'order' => 'ASC',
         'number' => 36,
     ];
@@ -602,7 +602,56 @@ function devhub_get_secondary_brands(int $parent = -1): array
 
     $terms = get_terms($args);
 
-    return (!is_wp_error($terms) && !empty($terms)) ? $terms : [];
+    if (is_wp_error($terms) || empty($terms)) {
+        return [];
+    }
+
+    $has_explicit_order = false;
+
+    foreach ($terms as $term) {
+        if ($term instanceof WP_Term && devhub_get_term_admin_order($term) !== 0) {
+            $has_explicit_order = true;
+            break;
+        }
+    }
+
+    if ($has_explicit_order) {
+        usort($terms, static function (WP_Term $a, WP_Term $b): int {
+            $a_order = devhub_get_term_admin_order($a);
+            $b_order = devhub_get_term_admin_order($b);
+
+            if ($a_order === $b_order) {
+                return strcasecmp($a->name, $b->name);
+            }
+
+            return $a_order <=> $b_order;
+        });
+    }
+
+    return $terms;
+}
+
+function devhub_get_term_admin_order(WP_Term $term): int
+{
+    $order_keys = [
+        'order',
+        'menu_order',
+        'term_order',
+        'product_brand_order',
+        'pwb_brand_order',
+    ];
+
+    foreach ($order_keys as $key) {
+        $value = get_term_meta($term->term_id, $key, true);
+
+        if ($value !== '' && is_numeric($value)) {
+            return (int) $value;
+        }
+    }
+
+    return isset($term->term_order) && is_numeric($term->term_order)
+        ? (int) $term->term_order
+        : 0;
 }
 
 function devhub_get_secondary_categories(): array
@@ -758,12 +807,21 @@ function devhub_render_secondary_nav(): void
                     <i class="fas fa-chevron-down" aria-hidden="true"></i>
                 </button>
                 <?php if (!empty($categories)): ?>
+                    <?php $category_list_class = count($categories) > 10 ? ' devhub-secondary-nav__cat-list--scroll' : ''; ?>
                     <div class="devhub-secondary-nav__dropdown devhub-secondary-nav__dropdown--categories">
-                        <ul>
+                        <ul class="devhub-secondary-nav__cat-list<?php echo esc_attr($category_list_class); ?>">
                             <?php foreach ($categories as $category):
                                 $visual = devhub_get_secondary_category_visual($category);
+                                $child_categories = get_terms([
+                                    'taxonomy' => 'product_cat',
+                                    'hide_empty' => false,
+                                    'parent' => $category->term_id,
+                                    'orderby' => 'menu_order',
+                                    'order' => 'ASC',
+                                ]);
+                                $has_child_categories = !is_wp_error($child_categories) && !empty($child_categories);
                                 ?>
-                                <li>
+                                <li class="<?php echo $has_child_categories ? 'devhub-secondary-nav__cat-has-children' : ''; ?>">
                                     <a href="<?php echo esc_url(get_term_link($category)); ?>">
                                         <span class="devhub-secondary-nav__cat-icon" aria-hidden="true">
                                             <?php if ($visual['image'] !== ''): ?>
@@ -773,7 +831,21 @@ function devhub_render_secondary_nav(): void
                                             <i class="<?php echo esc_attr($visual['icon'] . ($visual['image'] !== '' ? ' devhub-secondary-nav__fallback-icon--hidden' : '')); ?>"></i>
                                         </span>
                                         <span><?php echo esc_html($category->name); ?></span>
+                                        <?php if ($has_child_categories): ?>
+                                            <i class="fas fa-chevron-right devhub-secondary-nav__cat-arrow" aria-hidden="true"></i>
+                                        <?php endif; ?>
                                     </a>
+                                    <?php if ($has_child_categories): ?>
+                                        <ul class="devhub-secondary-nav__cat-children">
+                                            <?php foreach ($child_categories as $child_category): ?>
+                                                <li>
+                                                    <a href="<?php echo esc_url(get_term_link($child_category)); ?>">
+                                                        <?php echo esc_html($child_category->name); ?>
+                                                    </a>
+                                                </li>
+                                            <?php endforeach; ?>
+                                        </ul>
+                                    <?php endif; ?>
                                 </li>
                             <?php endforeach; ?>
                         </ul>
@@ -784,6 +856,7 @@ function devhub_render_secondary_nav(): void
             <div class="devhub-secondary-nav__item devhub-secondary-nav__item--brands">
                 <button class="devhub-secondary-nav__button" type="button" aria-haspopup="true">
                     <span><?php esc_html_e('Brands', 'devicehub-theme'); ?></span>
+                    <i class="fas fa-chevron-down" aria-hidden="true"></i>
                 </button>
                 <?php if (!empty($parent_brands) || !empty($brand_list)): ?>
                     <div class="devhub-secondary-nav__dropdown devhub-secondary-nav__dropdown--brands">

@@ -21,6 +21,7 @@ function devhub_footer_settings_defaults(): array
         'email' => 'cs@hutchison.lk',
         'google_play_url' => '#',
         'app_store_url' => '#',
+        'copyright_text' => '',
         'facebook_url' => '#',
         'twitter_url' => '#',
         'linkedin_url' => '#',
@@ -238,6 +239,7 @@ function devhub_sanitize_footer_settings($input): array
     $sanitized['email'] = sanitize_email($input['email'] ?? $defaults['email']);
     $sanitized['google_play_url'] = devhub_sanitize_footer_link_target($input['google_play_url'] ?? $defaults['google_play_url']);
     $sanitized['app_store_url'] = devhub_sanitize_footer_link_target($input['app_store_url'] ?? $defaults['app_store_url']);
+    $sanitized['copyright_text'] = wp_kses_post($input['copyright_text'] ?? $defaults['copyright_text']);
     $sanitized['facebook_url'] = devhub_sanitize_footer_link_target($input['facebook_url'] ?? $defaults['facebook_url']);
     $sanitized['twitter_url'] = devhub_sanitize_footer_link_target($input['twitter_url'] ?? $defaults['twitter_url']);
     $sanitized['linkedin_url'] = devhub_sanitize_footer_link_target($input['linkedin_url'] ?? $defaults['linkedin_url']);
@@ -374,6 +376,13 @@ function devhub_render_footer_settings_page(): void
                     <th scope="row"><label for="devhub-footer-app-store-url"><?php esc_html_e('App Store URL', 'devicehub-theme'); ?></label></th>
                     <td>
                         <input id="devhub-footer-app-store-url" class="regular-text" type="text" name="devhub_footer_settings[app_store_url]" value="<?php echo esc_attr($settings['app_store_url']); ?>" placeholder="https://example.com/app or /app">
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="devhub-footer-copyright-text"><?php esc_html_e('Copyright Text', 'devicehub-theme'); ?></label></th>
+                    <td>
+                        <textarea id="devhub-footer-copyright-text" class="large-text" rows="2" name="devhub_footer_settings[copyright_text]" placeholder="<?php esc_attr_e('Copyright © 2026 Hutch. All rights reserved.', 'devicehub-theme'); ?>"><?php echo esc_textarea($settings['copyright_text']); ?></textarea>
+                        <p class="description"><?php esc_html_e('Shown centered at the bottom of the footer. Leave empty to hide this section.', 'devicehub-theme'); ?></p>
                     </td>
                 </tr>
             </table>

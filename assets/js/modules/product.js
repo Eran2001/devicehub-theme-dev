@@ -928,7 +928,7 @@
 
     function getVisibleCount() {
       var screenWidth = window.innerWidth || document.documentElement.clientWidth;
-      if (screenWidth <= 576) return 1;
+      if (screenWidth <= 576) return 2;
       if (screenWidth < 992) return 2;
       if (screenWidth < 1200) return 3;
       return 4;

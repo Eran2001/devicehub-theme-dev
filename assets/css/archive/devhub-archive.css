@@ -268,6 +268,13 @@
   background: #fff5f0;
 }
 
+@media (max-width: 991px) {
+  .devhub-sort-dropdown__list {
+    left: 0;
+    right: auto;
+  }
+}
+
 /* ==========================================================================
    6. Product grid
    ========================================================================== */
@@ -294,7 +301,7 @@
 }
 
 .devhub-archive__grid .devhub-product-card__name {
-  font-size: var(--devhub-text-xl);
+  font-size: var(--devhub-text-2xl);
 }
 
 .devhub-archive__grid .devhub-product-card__price {
@@ -302,13 +309,13 @@
 }
 
 .devhub-archive__grid .devhub-product-card__price del {
-  font-size: var(--devhub-text-sm);
+  font-size: var(--devhub-text-md);
 }
 
 .devhub-archive__grid .devhub-product-card__stock {
   top: 12px;
   right: 12px;
-  font-size: var(--devhub-text-xl);
+  font-size: var(--devhub-text-xl) !important;
 }
 
 .devhub-archive__grid .devhub-product-card__badge {

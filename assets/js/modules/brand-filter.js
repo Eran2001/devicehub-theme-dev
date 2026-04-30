@@ -64,9 +64,73 @@
     });
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initBrandFilters);
-  } else {
+  function initBrandScrollers() {
+    const controls = document.querySelectorAll("[data-brand-scroll]");
+
+    function getTrack(sectionId) {
+      return document.querySelector("#" + sectionId + " .devhub-products__brands");
+    }
+
+    function updateState(sectionId) {
+      const track = getTrack(sectionId);
+      if (!track) return;
+
+      const prev = document.querySelector(
+        '[data-brand-scroll="' + sectionId + '"][data-brand-direction="prev"]'
+      );
+      const next = document.querySelector(
+        '[data-brand-scroll="' + sectionId + '"][data-brand-direction="next"]'
+      );
+      const hasOverflow = track.scrollWidth > track.clientWidth + 2;
+      const atStart = track.scrollLeft <= 2;
+      const atEnd = track.scrollLeft + track.clientWidth >= track.scrollWidth - 2;
+
+      [prev, next].forEach(function (btn) {
+        if (!btn) return;
+        btn.classList.toggle("is-hidden", !hasOverflow);
+      });
+
+      if (prev) prev.disabled = !hasOverflow || atStart;
+      if (next) next.disabled = !hasOverflow || atEnd;
+    }
+
+    controls.forEach(function (btn) {
+      const sectionId = btn.dataset.brandScroll;
+      const direction = btn.dataset.brandDirection;
+      const track = getTrack(sectionId);
+
+      if (!track) return;
+
+      btn.addEventListener("click", function () {
+        const amount = Math.max(180, Math.round(track.clientWidth * 0.72));
+        track.scrollBy({
+          left: direction === "prev" ? -amount : amount,
+          behavior: "smooth",
+        });
+      });
+
+      track.addEventListener("scroll", function () {
+        updateState(sectionId);
+      }, { passive: true });
+
+      updateState(sectionId);
+    });
+
+    window.addEventListener("resize", function () {
+      controls.forEach(function (btn) {
+        updateState(btn.dataset.brandScroll);
+      });
+    });
+  }
+
+  function init() {
     initBrandFilters();
+    initBrandScrollers();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
   }
 })();

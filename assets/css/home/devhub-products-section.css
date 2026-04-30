@@ -16,7 +16,7 @@
   padding-bottom: 16px;
   border-bottom: 2px solid var(--devhub-border);
   gap: 16px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 .devhub-brand-empty {
@@ -52,6 +52,7 @@
 }
 
 .devhub-products__title {
+  flex: 0 0 auto;
   font-size: var(--devhub-text-3xl);
   font-weight: 700;
   color: var(--devhub-black);
@@ -75,16 +76,84 @@
    2. Brand filter tabs — boxed style: active = orange border + tint bg
    ========================================================================== */
 
+.devhub-products__brand-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: min(100%, calc((var(--devhub-brand-count, 10) * 92px) + 84px));
+  margin-left: auto;
+  justify-content: flex-end;
+}
+
+.devhub-products__brands-viewport {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+
 .devhub-products__brands {
   display: flex;
   align-items: center;
   gap: 6px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  margin-left: auto;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+}
+
+.devhub-products__brands::-webkit-scrollbar {
+  display: none;
+}
+
+.devhub-products__brand-nav {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  border: 1px solid rgba(255, 102, 0, 0.22);
+  border-radius: var(--devhub-radius-sm);
+  background: var(--devhub-white);
+  color: var(--devhub-primary);
+  font-size: var(--devhub-text-md);
+  transition:
+    color var(--devhub-transition),
+    border-color var(--devhub-transition),
+    background-color var(--devhub-transition),
+    opacity var(--devhub-transition);
+}
+
+.devhub-products__brand-nav:hover {
+  border-color: rgba(255, 102, 0, 0.45);
+  background: rgba(255, 102, 0, 0.06);
+}
+
+.devhub-products__brand-nav:focus,
+.devhub-products__brand-nav:focus-visible,
+.devhub-products__brand-nav:active {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.devhub-products__brand-nav:disabled,
+.devhub-products__brand-nav[disabled] {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.devhub-products__brand-nav.is-hidden {
+  display: none;
 }
 
 .devhub-brand-tab {
+  flex: 0 0 auto;
+  min-width: 0;
   padding: 8px 16px;
   border-radius: var(--devhub-radius-sm);
   font-size: var(--devhub-text-xl);
@@ -157,6 +226,7 @@
 .devhub-products .devhub-product-card__stock {
   top: 12px;
   right: 12px;
+  font-size: var(--devhub-text-xl) !important;
 }
 
 .devhub-products .devhub-product-card__action {
@@ -200,7 +270,7 @@
 }
 
 #devhub-mobile-phones .devhub-brand-tab {
-  font-size: var(--devhub-text-2xl);
+  font-size: var(--devhub-text-xl);
 }
 
 #devhub-mobile-phones .devhub-products__view-all {
@@ -212,7 +282,7 @@
 }
 
 #devhub-mobile-phones .devhub-product-card__name {
-  font-size: var(--devhub-text-xl);
+  font-size: var(--devhub-text-2xl);
 }
 
 #devhub-mobile-phones .devhub-product-card__price {
@@ -220,11 +290,11 @@
 }
 
 #devhub-mobile-phones .devhub-product-card__price del {
-  font-size: var(--devhub-text-sm);
+  font-size: var(--devhub-text-md);
 }
 
 #devhub-mobile-phones .devhub-product-card__stock {
-  font-size: var(--devhub-text-xl);
+  font-size: var(--devhub-text-xl) !important;
 }
 
 #devhub-broad-bands .devhub-products__title {
@@ -232,7 +302,7 @@
 }
 
 #devhub-broad-bands .devhub-brand-tab {
-  font-size: var(--devhub-text-2xl);
+  font-size: var(--devhub-text-xl);
 }
 
 #devhub-broad-bands .devhub-products__view-all {
@@ -244,7 +314,7 @@
 }
 
 #devhub-broad-bands .devhub-product-card__name {
-  font-size: var(--devhub-text-xl);
+  font-size: var(--devhub-text-2xl);
 }
 
 #devhub-broad-bands .devhub-product-card__price {
@@ -252,11 +322,11 @@
 }
 
 #devhub-broad-bands .devhub-product-card__price del {
-  font-size: var(--devhub-text-sm);
+  font-size: var(--devhub-text-md);
 }
 
 #devhub-broad-bands .devhub-product-card__stock {
-  font-size: var(--devhub-text-xl);
+  font-size: var(--devhub-text-xl) !important;
 }
 
 #devhub-electronics .devhub-products__title {
@@ -264,7 +334,7 @@
 }
 
 #devhub-electronics .devhub-brand-tab {
-  font-size: var(--devhub-text-2xl);
+  font-size: var(--devhub-text-xl);
 }
 
 #devhub-electronics .devhub-products__view-all {
@@ -276,7 +346,7 @@
 }
 
 #devhub-electronics .devhub-product-card__name {
-  font-size: var(--devhub-text-xl);
+  font-size: var(--devhub-text-2xl);
 }
 
 #devhub-electronics .devhub-product-card__price {
@@ -284,11 +354,11 @@
 }
 
 #devhub-electronics .devhub-product-card__price del {
-  font-size: var(--devhub-text-sm);
+  font-size: var(--devhub-text-md);
 }
 
 #devhub-electronics .devhub-product-card__stock {
-  font-size: var(--devhub-text-xl);
+  font-size: var(--devhub-text-xl) !important;
 }
 
 #devhub-accessories .devhub-products__title {
@@ -296,7 +366,7 @@
 }
 
 #devhub-accessories .devhub-brand-tab {
-  font-size: var(--devhub-text-2xl);
+  font-size: var(--devhub-text-xl);
 }
 
 #devhub-accessories .devhub-products__view-all {
@@ -308,7 +378,7 @@
 }
 
 #devhub-accessories .devhub-product-card__name {
-  font-size: var(--devhub-text-xl);
+  font-size: var(--devhub-text-2xl);
 }
 
 #devhub-accessories .devhub-product-card__price {
@@ -323,11 +393,11 @@
 }
 
 #devhub-accessories .devhub-product-card__price del {
-  font-size: var(--devhub-text-sm);
+  font-size: var(--devhub-text-md);
 }
 
 #devhub-accessories .devhub-product-card__stock {
-  font-size: var(--devhub-text-xl);
+  font-size: var(--devhub-text-xl) !important;
 }
 
 /* ==========================================================================
@@ -348,11 +418,29 @@
   .devhub-products__header {
     flex-direction: column;
     align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 14px;
+  }
+
+  .devhub-products__brand-filter {
+    width: 100%;
+    max-width: 100%;
+    margin-left: 0;
+  }
+
+  .devhub-products__brands-viewport {
+    width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
   }
 
   .devhub-products__brands {
     justify-content: flex-start;
-    margin-left: 0;
+    width: 100%;
+  }
+
+  .devhub-products__brand-nav {
+    display: none;
   }
 
   .devhub-products__view-all {
@@ -362,6 +450,25 @@
 
 @media (max-width: 575px) {
   .devhub-products__grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .devhub-products .devhub-product-card {
+    padding: 10px;
+  }
+
+  .devhub-products .devhub-product-card__img-wrap {
+    height: 150px;
+    margin-bottom: 10px;
+  }
+
+  .devhub-products .devhub-product-card__body {
+    gap: 7px;
+  }
+
+  .devhub-products .devhub-product-card__action {
+    min-height: 34px;
+    padding: 8px 10px;
   }
 }
