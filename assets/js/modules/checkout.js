@@ -732,11 +732,94 @@
 	}
 
 	function enhancePlaceOrderButton() {
+		const button = document.querySelector( PLACE_ORDER_SELECTOR );
+
 		enhanceActionButton(
-			document.querySelector( PLACE_ORDER_SELECTOR ),
+			button,
 			'devhub-checkout-place-order-button',
 			'Place Order'
 		);
+		bindPlaceOrderLoadingWidth( button );
+	}
+
+	function isPlaceOrderButtonLoading( button ) {
+		if ( ! button ) {
+			return false;
+		}
+
+		return (
+			button.classList.contains( 'devhub-place-order-loading' ) ||
+			button.className.includes( '--loading' ) ||
+			button.classList.contains( 'is-loading' ) ||
+			button.getAttribute( 'aria-busy' ) === 'true' ||
+			!! button.querySelector( '.wc-block-components-spinner, .components-spinner, .spinner' )
+		);
+	}
+
+	function lockPlaceOrderButtonWidth( button ) {
+		if ( ! button || button.dataset.devhubLoadingWidthLocked === '1' ) {
+			return;
+		}
+
+		const rect = button.getBoundingClientRect();
+
+		if ( rect.width <= 0 ) {
+			return;
+		}
+
+		button.dataset.devhubLoadingWidthLocked = '1';
+		button.classList.add( 'devhub-place-order-loading' );
+		button.style.setProperty( 'width', `${ Math.ceil( rect.width ) }px`, 'important' );
+	}
+
+	function unlockPlaceOrderButtonWidth( button ) {
+		if ( ! button || button.dataset.devhubLoadingWidthLocked !== '1' ) {
+			return;
+		}
+
+		delete button.dataset.devhubLoadingWidthLocked;
+		button.classList.remove( 'devhub-place-order-loading' );
+		button.style.removeProperty( 'width' );
+	}
+
+	function syncPlaceOrderLoadingWidth( button ) {
+		if ( isPlaceOrderButtonLoading( button ) ) {
+			lockPlaceOrderButtonWidth( button );
+			return;
+		}
+
+		unlockPlaceOrderButtonWidth( button );
+	}
+
+	function bindPlaceOrderLoadingWidth( button ) {
+		if ( ! button || button.dataset.devhubLoadingWidthBound === '1' ) {
+			return;
+		}
+
+		button.dataset.devhubLoadingWidthBound = '1';
+		button.addEventListener( 'click', () => {
+			lockPlaceOrderButtonWidth( button );
+			window.setTimeout( () => {
+				if (
+					! button.className.includes( '--loading' ) &&
+					! button.classList.contains( 'is-loading' ) &&
+					button.getAttribute( 'aria-busy' ) !== 'true' &&
+					! button.querySelector( '.wc-block-components-spinner, .components-spinner, .spinner' )
+				) {
+					unlockPlaceOrderButtonWidth( button );
+				}
+			}, 250 );
+		} );
+
+		const observer = new MutationObserver( () => syncPlaceOrderLoadingWidth( button ) );
+		observer.observe( button, {
+			attributes: true,
+			attributeFilter: [ 'class', 'aria-busy', 'disabled', 'aria-disabled' ],
+			childList: true,
+			subtree: true,
+		} );
+
+		syncPlaceOrderLoadingWidth( button );
 	}
 
 	function enhanceCouponButton() {

@@ -1054,6 +1054,72 @@ tr:has(.order-actions--heading) {
   margin-right: 0;
 }
 
+.wc-block-components-checkout-place-order-button.wc-block-components-button[class*="--loading"],
+.wc-block-components-checkout-place-order-button.wc-block-components-button.devhub-place-order-loading,
+.wc-block-components-checkout-place-order-button.wc-block-components-button.is-loading {
+  justify-content: center !important;
+}
+
+.wc-block-components-checkout-place-order-button.wc-block-components-button[class*="--loading"]
+  > *,
+.wc-block-components-checkout-place-order-button.wc-block-components-button.devhub-place-order-loading
+  > *,
+.wc-block-components-checkout-place-order-button.wc-block-components-button.is-loading
+  > *,
+.wc-block-components-checkout-place-order-button.wc-block-components-button[class*="--loading"]
+  .wc-block-components-button__text,
+.wc-block-components-checkout-place-order-button.wc-block-components-button.devhub-place-order-loading
+  .wc-block-components-button__text,
+.wc-block-components-checkout-place-order-button.wc-block-components-button.is-loading
+  .wc-block-components-button__text {
+  visibility: hidden !important;
+}
+
+.wc-block-components-checkout-place-order-button.wc-block-components-button[class*="--loading"]
+  .wc-block-components-spinner,
+.wc-block-components-checkout-place-order-button.wc-block-components-button[class*="--loading"]
+  .components-spinner,
+.wc-block-components-checkout-place-order-button.wc-block-components-button[class*="--loading"]
+  .spinner,
+.wc-block-components-checkout-place-order-button.wc-block-components-button.devhub-place-order-loading
+  .wc-block-components-spinner,
+.wc-block-components-checkout-place-order-button.wc-block-components-button.devhub-place-order-loading
+  .components-spinner,
+.wc-block-components-checkout-place-order-button.wc-block-components-button.devhub-place-order-loading
+  .spinner,
+.wc-block-components-checkout-place-order-button.wc-block-components-button.is-loading
+  .wc-block-components-spinner,
+.wc-block-components-checkout-place-order-button.wc-block-components-button.is-loading
+  .components-spinner,
+.wc-block-components-checkout-place-order-button.wc-block-components-button.is-loading
+  .spinner {
+  margin: 0 !important;
+  display: none !important;
+}
+
+.wc-block-components-checkout-place-order-button.wc-block-components-button[class*="--loading"]::after,
+.wc-block-components-checkout-place-order-button.wc-block-components-button.devhub-place-order-loading::after,
+.wc-block-components-checkout-place-order-button.wc-block-components-button.is-loading::after {
+  content: "" !important;
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  width: 1.8rem !important;
+  height: 1.8rem !important;
+  margin: -0.9rem 0 0 -0.9rem !important;
+  border: 0.2rem solid rgba(255, 255, 255, 0.4) !important;
+  border-top-color: #fff !important;
+  border-radius: 50% !important;
+  animation: devhub-checkout-button-spin 0.75s linear infinite !important;
+  pointer-events: none !important;
+}
+
+@keyframes devhub-checkout-button-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .wc-block-checkout-empty
   .wp-block-button__link.devhub-empty-checkout-button
   i.fa-arrow-right {
@@ -1112,6 +1178,38 @@ tr:has(.order-actions--heading) {
   background-color: #e4e7ec !important;
   border-color: #e4e7ec !important;
   color: #98a2b3 !important;
+}
+
+.wc-block-components-checkout-place-order-button.wc-block-components-button.devhub-place-order-loading,
+.wc-block-components-checkout-place-order-button.wc-block-components-button.devhub-place-order-loading:hover,
+.wc-block-components-checkout-place-order-button.wc-block-components-button.devhub-place-order-loading:disabled,
+.wc-block-components-checkout-place-order-button.wc-block-components-button.devhub-place-order-loading:disabled:hover,
+.wc-block-components-checkout-place-order-button.wc-block-components-button.devhub-place-order-loading[disabled],
+.wc-block-components-checkout-place-order-button.wc-block-components-button.devhub-place-order-loading[disabled]:hover,
+.wc-block-components-checkout-place-order-button.wc-block-components-button.devhub-place-order-loading[aria-disabled="true"],
+.wc-block-components-checkout-place-order-button.wc-block-components-button.devhub-place-order-loading[aria-disabled="true"]:hover,
+.wc-block-components-checkout-place-order-button.wc-block-components-button[class*="--loading"],
+.wc-block-components-checkout-place-order-button.wc-block-components-button[class*="--loading"]:hover,
+.wc-block-components-checkout-place-order-button.wc-block-components-button[class*="--loading"]:disabled,
+.wc-block-components-checkout-place-order-button.wc-block-components-button[class*="--loading"]:disabled:hover,
+.wc-block-components-checkout-place-order-button.wc-block-components-button[class*="--loading"][disabled],
+.wc-block-components-checkout-place-order-button.wc-block-components-button[class*="--loading"][disabled]:hover,
+.wc-block-components-checkout-place-order-button.wc-block-components-button[class*="--loading"][aria-disabled="true"],
+.wc-block-components-checkout-place-order-button.wc-block-components-button[class*="--loading"][aria-disabled="true"]:hover,
+.wc-block-components-checkout-place-order-button.wc-block-components-button.is-loading,
+.wc-block-components-checkout-place-order-button.wc-block-components-button.is-loading:hover,
+.wc-block-components-checkout-place-order-button.wc-block-components-button.is-loading:disabled,
+.wc-block-components-checkout-place-order-button.wc-block-components-button.is-loading:disabled:hover,
+.wc-block-components-checkout-place-order-button.wc-block-components-button.is-loading[disabled],
+.wc-block-components-checkout-place-order-button.wc-block-components-button.is-loading[disabled]:hover,
+.wc-block-components-checkout-place-order-button.wc-block-components-button.is-loading[aria-disabled="true"],
+.wc-block-components-checkout-place-order-button.wc-block-components-button.is-loading[aria-disabled="true"]:hover {
+  background-color: var(--wf-main-color) !important;
+  border-color: var(--wf-main-color) !important;
+  color: transparent !important;
+  cursor: wait !important;
+  opacity: 1 !important;
+  -webkit-text-fill-color: transparent !important;
 }
 
 .wc-block-components-checkout-place-order-button.wc-block-components-button:focus,

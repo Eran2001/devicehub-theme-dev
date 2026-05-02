@@ -422,7 +422,7 @@ function devhub_get_variation_gallery_data(array $variation, string $fallback_al
 }
 
 /**
- * Normalize a raw hex color string from term meta.
+ * Normalize a raw hex color string from term meta or term description.
  */
 function devhub_normalize_hex_color(string $value, string $fallback = '#cccccc'): string
 {
@@ -443,6 +443,24 @@ function devhub_normalize_hex_color(string $value, string $fallback = '#cccccc')
     }
 
     return $fallback;
+}
+
+/**
+ * Extract the first hex color value from a product color term description.
+ */
+function devhub_get_hex_color_from_description(string $description): string
+{
+    $description = wp_strip_all_tags($description);
+
+    if (
+        preg_match('/#(?:[0-9a-fA-F]{3}){1,2}\b/', $description, $matches)
+        || preg_match('/\b[0-9a-fA-F]{6}\b/', $description, $matches)
+        || preg_match('/\b[0-9a-fA-F]{3}\b/', $description, $matches)
+    ) {
+        return devhub_normalize_hex_color($matches[0], '');
+    }
+
+    return '';
 }
 
 /**
@@ -641,7 +659,8 @@ function devhub_guess_color_hex(string $slug, string $name, string $fallback = '
 /**
  * Resolve Woo product color terms into swatch-ready UI data.
  *
- * Reads the real color value from term meta saved by Woo Variation Swatches.
+ * Reads the real color value from term meta saved by Woo Variation Swatches,
+ * then falls back to the first hex value found in the term description.
  */
 function devhub_get_product_color_options(WC_Product $product): array
 {
@@ -669,9 +688,15 @@ function devhub_get_product_color_options(WC_Product $product): array
         }
 
         $raw_hex = (string) get_term_meta($term->term_id, 'product_attribute_color', true);
-        $hex = trim($raw_hex) !== ''
-            ? devhub_normalize_hex_color($raw_hex)
-            : devhub_guess_color_hex($slug, $term->name);
+        $description_hex = devhub_get_hex_color_from_description((string) $term->description);
+
+        if (trim($raw_hex) !== '') {
+            $hex = devhub_normalize_hex_color($raw_hex);
+        } elseif ($description_hex !== '') {
+            $hex = $description_hex;
+        } else {
+            $hex = devhub_guess_color_hex($slug, $term->name);
+        }
 
         $colors[] = [
             'slug' => $slug,
