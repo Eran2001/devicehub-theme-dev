@@ -35,7 +35,17 @@ defined( 'ABSPATH' ) || exit;
 
 		<?php else : ?>
 
-			<?php wc_get_template( 'checkout/order-received.php', array( 'order' => $order ) ); ?>
+			<div class="devhub-order-received-hero">
+				<div class="devhub-order-received-hero__icon" aria-hidden="true">
+					<i class="fas fa-check"></i>
+				</div>
+				<h2 class="devhub-order-received-hero__title">
+					<?php esc_html_e( 'Order Received!', 'devicehub-theme' ); ?>
+				</h2>
+				<p class="devhub-order-received-hero__text">
+					<?php esc_html_e( "Thank you for your purchase. We've received your order and are getting it ready for shipment. You'll receive a confirmation email shortly.", 'devicehub-theme' ); ?>
+				</p>
+			</div>
 
 			<ul class="woocommerce-order-overview woocommerce-thankyou-order-details order_details">
 

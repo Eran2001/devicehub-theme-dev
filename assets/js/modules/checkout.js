@@ -714,7 +714,9 @@
 
 	function enhanceProductNameTooltips() {
 		document
-			.querySelectorAll( '.devhub-checkout-mobile-sidebar-summary .wc-block-components-product-name' )
+			.querySelectorAll(
+				'.devhub-checkout-mobile-sidebar-summary .wc-block-components-product-name, .devhub-order-item-card__name-text'
+			)
 			.forEach( ( name ) => {
 				const fullName = normalizeText( name.textContent || '' );
 
@@ -736,6 +738,10 @@
 				name.dataset.devhubTooltipBound = 'true';
 
 				const showTooltip = ( event ) => {
+					if ( event.type === 'touchend' ) {
+						event.preventDefault();
+					}
+
 					event.stopPropagation();
 					const isVisible = name.classList.contains( 'is-tooltip-visible' );
 					hideProductNameTooltip();
