@@ -20,7 +20,9 @@
 	const ORDER_NOTE_PLACEHOLDER_SELECTOR = '.devhub-checkout-order-note-placeholder';
 	const PAYMENT_STEP_SELECTOR = '.wp-block-woocommerce-checkout-payment-block';
 	const PAYMENT_PLACEHOLDER_SELECTOR = '.devhub-checkout-payment-placeholder';
+	const MOBILE_SUMMARY_PLACEHOLDER_SELECTOR = '.devhub-checkout-mobile-summary-placeholder';
 	const SIDEBAR_RELOCATION_CLASS = 'devhub-checkout--sidebar-relocation';
+	const MOBILE_SIDEBAR_SUMMARY_CLASS = 'devhub-checkout-mobile-sidebar-summary';
 	const EMPTY_CHECKOUT_BUTTON_SELECTOR = '.wc-block-checkout-empty .wp-block-button__link';
 	const COUPON_BUTTON_SELECTOR = '.wp-block-woocommerce-checkout-order-summary-coupon-form-block .wc-block-components-totals-coupon__button';
 	const COUPON_INPUT_SELECTOR = '.wp-block-woocommerce-checkout-order-summary-coupon-form-block .wc-block-components-totals-coupon__input input';
@@ -39,12 +41,16 @@
 	const NATIVE_PICKUP_OPTION_SELECTOR = '.wc-block-checkout__pickup-options .wc-block-components-radio-control__option';
 	const NATIVE_PICKUP_INPUT_SELECTOR = '.wc-block-checkout__pickup-options input[type="radio"]';
 	const DESKTOP_SIDEBAR_MEDIA = '(min-width: 782px)';
+	const MOBILE_SUMMARY_MEDIA = '(max-width: 781px)';
 
 	const state = {};
 
 	let unsubscribe = null;
 	let lastSignature = '';
 	let hasBoundViewportListener = false;
+	let orderSummaryObserver = null;
+	let observedOrderSummary = null;
+	let orderSummaryObserverTimer = null;
 
 	function getCheckoutStore() {
 		return window.wp?.data?.select?.( CHECKOUT_STORE_KEY ) || null;
@@ -595,7 +601,9 @@
 	}
 
 	function enhanceOrderSummaryRemoveButtons() {
-		const summary = document.querySelector( ORDER_SUMMARY_SELECTOR );
+		const summary = document.querySelector(
+			`.${ MOBILE_SIDEBAR_SUMMARY_CLASS }, ${ ORDER_SUMMARY_SELECTOR }`
+		);
 		if ( ! summary ) {
 			return;
 		}
@@ -605,12 +613,12 @@
 
 		rows.forEach( ( row, index ) => {
 			const cartItemKey = getCartItemKey( cartItems[ index ] );
-			if ( ! cartItemKey ) {
-				return;
-			}
 
 			row.classList.add( 'devhub-checkout-summary-item' );
-			row.dataset.devhubCartItemKey = cartItemKey;
+
+			if ( cartItemKey ) {
+				row.dataset.devhubCartItemKey = cartItemKey;
+			}
 
 			let button = row.querySelector( '.devhub-checkout-summary-remove' );
 			if ( ! button ) {
@@ -626,9 +634,130 @@
 				row.appendChild( button );
 			}
 
-			button.dataset.cartItemKey = cartItemKey;
+			if ( cartItemKey ) {
+				button.dataset.cartItemKey = cartItemKey;
+				button.disabled = false;
+			}
+
 			button.setAttribute( 'aria-label', 'Remove item from order summary' );
 		} );
+	}
+
+	function observeOrderSummary() {
+		const summary = document.querySelector(
+			`.${ MOBILE_SIDEBAR_SUMMARY_CLASS }, ${ ORDER_SUMMARY_SELECTOR }`
+		);
+
+		if ( ! summary || summary === observedOrderSummary ) {
+			return;
+		}
+
+		if ( orderSummaryObserver ) {
+			orderSummaryObserver.disconnect();
+		}
+
+		observedOrderSummary = summary;
+		orderSummaryObserver = new MutationObserver( () => {
+			window.clearTimeout( orderSummaryObserverTimer );
+			orderSummaryObserverTimer = window.setTimeout( () => {
+				enhanceOrderSummaryRemoveButtons();
+				enhanceProductNameTooltips();
+			}, 40 );
+		} );
+
+		orderSummaryObserver.observe( summary, {
+			childList: true,
+			subtree: true,
+		} );
+	}
+
+	function hideProductNameTooltip() {
+		document
+			.querySelectorAll( '.devhub-checkout-product-name-tooltip.is-tooltip-visible' )
+			.forEach( ( name ) => {
+				name.classList.remove( 'is-tooltip-visible' );
+				name.setAttribute( 'aria-expanded', 'false' );
+			} );
+
+		document.querySelector( '.devhub-checkout-product-tooltip' )?.remove();
+	}
+
+	function showProductNameTooltip( name ) {
+		const fullName = name?.dataset?.fullName || '';
+
+		if ( ! fullName ) {
+			return;
+		}
+
+		hideProductNameTooltip();
+
+		const tooltip = document.createElement( 'div' );
+		tooltip.className = 'devhub-checkout-product-tooltip';
+		tooltip.textContent = fullName;
+		document.body.appendChild( tooltip );
+
+		const rect = name.getBoundingClientRect();
+		const tooltipRect = tooltip.getBoundingClientRect();
+		const viewportGap = 12;
+		const top = Math.max( viewportGap, rect.top - tooltipRect.height - 10 );
+		const left = Math.min(
+			Math.max( viewportGap, rect.left ),
+			window.innerWidth - tooltipRect.width - viewportGap
+		);
+
+		tooltip.style.top = `${ top }px`;
+		tooltip.style.left = `${ left }px`;
+
+		name.classList.add( 'is-tooltip-visible' );
+		name.setAttribute( 'aria-expanded', 'true' );
+	}
+
+	function enhanceProductNameTooltips() {
+		document
+			.querySelectorAll( '.devhub-checkout-mobile-sidebar-summary .wc-block-components-product-name' )
+			.forEach( ( name ) => {
+				const fullName = normalizeText( name.textContent || '' );
+
+				if ( ! fullName ) {
+					return;
+				}
+
+				name.classList.add( 'devhub-checkout-product-name-tooltip' );
+				name.dataset.fullName = fullName;
+				name.setAttribute( 'title', fullName );
+				name.setAttribute( 'aria-label', fullName );
+				name.setAttribute( 'aria-expanded', 'false' );
+				name.setAttribute( 'tabindex', '0' );
+
+				if ( name.dataset.devhubTooltipBound === 'true' ) {
+					return;
+				}
+
+				name.dataset.devhubTooltipBound = 'true';
+
+				const showTooltip = ( event ) => {
+					event.stopPropagation();
+					const isVisible = name.classList.contains( 'is-tooltip-visible' );
+					hideProductNameTooltip();
+
+					if ( ! isVisible ) {
+						showProductNameTooltip( name );
+					}
+				};
+
+				name.addEventListener( 'click', showTooltip );
+				name.addEventListener( 'touchend', showTooltip );
+				name.addEventListener( 'keydown', ( event ) => {
+					if ( event.key === 'Enter' || event.key === ' ' ) {
+						event.preventDefault();
+						showTooltip( event );
+					}
+
+					if ( event.key === 'Escape' ) {
+						hideProductNameTooltip();
+					}
+				} );
+			} );
 	}
 
 	function setValidationState( method, pickupStore ) {
@@ -981,6 +1110,10 @@
 		return typeof window.matchMedia !== 'function' || window.matchMedia( DESKTOP_SIDEBAR_MEDIA ).matches;
 	}
 
+	function shouldUseMobileSidebarSummary() {
+		return typeof window.matchMedia === 'function' && window.matchMedia( MOBILE_SUMMARY_MEDIA ).matches;
+	}
+
 	function isElementVisible( element ) {
 		return !! ( element && ( element.offsetParent !== null || element.getClientRects().length ) );
 	}
@@ -1067,6 +1200,82 @@
 		return placeholder;
 	}
 
+	function ensureMobileSummaryPlaceholder( orderSummary ) {
+		if ( ! orderSummary || ! orderSummary.parentElement ) {
+			return null;
+		}
+
+		let placeholder = document.querySelector( MOBILE_SUMMARY_PLACEHOLDER_SELECTOR );
+
+		if ( placeholder ) {
+			return placeholder;
+		}
+
+		placeholder = document.createElement( 'div' );
+		placeholder.className = 'devhub-checkout-mobile-summary-placeholder';
+		placeholder.hidden = true;
+		orderSummary.parentElement.insertBefore( placeholder, orderSummary );
+
+		return placeholder;
+	}
+
+	function forceExpandedOrderSummary( orderSummary ) {
+		if ( ! orderSummary ) {
+			return;
+		}
+
+		orderSummary
+			.querySelectorAll( '.wc-block-components-checkout-order-summary__button[aria-expanded="false"]' )
+			.forEach( ( button ) => {
+				button.click();
+			} );
+
+		orderSummary
+			.querySelectorAll(
+				'.wc-block-components-checkout-order-summary__content, .wc-block-components-order-summary__content'
+			)
+			.forEach( ( content ) => {
+				content.hidden = false;
+				content.removeAttribute( 'hidden' );
+				content.removeAttribute( 'aria-hidden' );
+			} );
+	}
+
+	function moveSidebarSummaryForMobile() {
+		const sidebarSummary = document.querySelector(
+			`.${ MOBILE_SIDEBAR_SUMMARY_CLASS }, ${ ORDER_SUMMARY_SELECTOR }`
+		);
+
+		if ( ! sidebarSummary ) {
+			return;
+		}
+
+		const placeholder = ensureMobileSummaryPlaceholder( sidebarSummary );
+
+		if ( shouldUseMobileSidebarSummary() ) {
+			const mainSummary = document.querySelector(
+				'.wc-block-checkout__main .wp-block-woocommerce-checkout-order-summary-block:not(.devhub-checkout-mobile-sidebar-summary)'
+			);
+			const paymentStep = document.querySelector( PAYMENT_STEP_SELECTOR );
+			const anchor = mainSummary || paymentStep;
+
+			sidebarSummary.classList.add( MOBILE_SIDEBAR_SUMMARY_CLASS );
+			forceExpandedOrderSummary( sidebarSummary );
+
+			if ( anchor?.parentElement && ( sidebarSummary.parentElement !== anchor.parentElement || sidebarSummary.nextElementSibling !== anchor ) ) {
+				anchor.parentElement.insertBefore( sidebarSummary, anchor );
+			}
+
+			return;
+		}
+
+		sidebarSummary.classList.remove( MOBILE_SIDEBAR_SUMMARY_CLASS );
+
+		if ( placeholder?.parentElement && sidebarSummary.previousElementSibling !== placeholder ) {
+			placeholder.insertAdjacentElement( 'afterend', sidebarSummary );
+		}
+	}
+
 	function moveOrderNoteStep() {
 		const noteStep = findOrderNoteStep();
 		if ( ! noteStep ) {
@@ -1118,6 +1327,47 @@
 		}
 	}
 
+	function moveTermsBeforePlaceOrder() {
+		if ( shouldUseCheckoutSidebar() ) {
+			return;
+		}
+
+		const termsBlock = document.querySelector(
+			'.wp-block-woocommerce-checkout-terms-block, .wc-block-checkout__terms'
+		);
+		if ( ! termsBlock ) {
+			return;
+		}
+
+		const placeOrderBtn = document.querySelector( PLACE_ORDER_SELECTOR );
+		if ( ! placeOrderBtn ) {
+			return;
+		}
+
+		// The Place Order button and Return to Cart link share an actions container.
+		// CSS inside that container often reverses their visual order, so inserting
+		// terms *inside* the container lands it between the two siblings visually.
+		// Fix: walk up from the button until we find the container that also holds
+		// the Return to Cart link, then insert terms before that entire container.
+		const returnLink = document.querySelector(
+			'.wc-block-components-checkout-return-to-cart-button, [class*="return-to-cart"]'
+		);
+
+		let anchor = placeOrderBtn;
+		let el = placeOrderBtn;
+		while ( el.parentElement && el.parentElement !== document.body ) {
+			el = el.parentElement;
+			if ( returnLink && el.contains( returnLink ) ) {
+				anchor = el;
+				break;
+			}
+		}
+
+		if ( termsBlock.nextElementSibling !== anchor || termsBlock.parentElement !== anchor.parentElement ) {
+			anchor.insertAdjacentElement( 'beforebegin', termsBlock );
+		}
+	}
+
 	function render() {
 		syncSidebarRelocationState();
 
@@ -1145,6 +1395,9 @@
 			syncOrderSummaryDeliveryLabel( method, pickupStore );
 			syncBillingTitleForPickup( method );
 			enhanceOrderSummaryRemoveButtons();
+			moveSidebarSummaryForMobile();
+			observeOrderSummary();
+			enhanceProductNameTooltips();
 			return;
 		}
 
@@ -1160,8 +1413,12 @@
 		enhanceContactInput();
 		enhanceOrderSummaryRemoveButtons();
 		expandAddressLineTwo();
+		moveSidebarSummaryForMobile();
+		observeOrderSummary();
+		enhanceProductNameTooltips();
 		moveOrderNoteStep();
 		movePaymentStep();
+		moveTermsBeforePlaceOrder();
 	}
 
 	function syncBillingTitleForPickup( method ) {
@@ -1275,16 +1532,27 @@
 		expandAddressLineTwo();
 		relabelAddressBlocks();
 		enhanceBillingEmailField();
+		moveSidebarSummaryForMobile();
+		observeOrderSummary();
+		enhanceProductNameTooltips();
 		moveOrderNoteStep();
 		movePaymentStep();
+		moveTermsBeforePlaceOrder();
 		enforceTermsMessage();
 
-		if ( ! hasBoundViewportListener ) {
-			hasBoundViewportListener = true;
-			window.addEventListener( 'resize', () => {
-				syncSidebarRelocationState();
-				moveOrderNoteStep();
+			if ( ! hasBoundViewportListener ) {
+				hasBoundViewportListener = true;
+				document.addEventListener( 'click', hideProductNameTooltip );
+				window.addEventListener( 'scroll', hideProductNameTooltip, { passive: true } );
+				window.addEventListener( 'resize', () => {
+					syncSidebarRelocationState();
+					moveSidebarSummaryForMobile();
+					observeOrderSummary();
+					enhanceProductNameTooltips();
+					hideProductNameTooltip();
+					moveOrderNoteStep();
 				movePaymentStep();
+				moveTermsBeforePlaceOrder();
 			}, { passive: true } );
 		}
 
@@ -1303,8 +1571,12 @@
 			expandAddressLineTwo();
 			relabelAddressBlocks();
 			enhanceBillingEmailField();
+			moveSidebarSummaryForMobile();
+			observeOrderSummary();
+			enhanceProductNameTooltips();
 			moveOrderNoteStep();
 			movePaymentStep();
+			moveTermsBeforePlaceOrder();
 		} );
 	}
 
