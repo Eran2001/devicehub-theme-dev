@@ -944,17 +944,37 @@ function devhub_debug_template_comment(): void
     echo '<!-- DEVHUB TEMPLATE: ' . esc_html($template) . ' -->' . PHP_EOL;
 }
 
-// ── WooCommerce — Buy Now redirect to checkout ────────────────────────────────
-// product.js adds devhub_buy_now=1 to the cart form before submitting.
-// We catch it here and redirect to checkout instead of back to the product page.
+// ── WooCommerce — Add-to-cart redirect (PRG pattern) ─────────────────────────
+// After a POST add-to-cart, WooCommerce by default may not redirect at all,
+// leaving the browser on the POST response. A reload then re-submits the POST
+// and adds another item. We enforce the Post/Redirect/Get pattern by always
+// returning a clean redirect URL:
+//   • Buy Now → checkout
+//   • Normal add to cart → the product's own permalink (no ?add-to-cart= params)
+//
+// The second arg ($product) is the WC_Product object WooCommerce passes to the filter.
 
-add_filter('woocommerce_add_to_cart_redirect', 'devhub_buy_now_redirect');
+add_filter('woocommerce_add_to_cart_redirect', 'devhub_add_to_cart_redirect', 99, 2);
 
-function devhub_buy_now_redirect(string $url): string
+function devhub_add_to_cart_redirect($url, $product)
 {
     if (!empty($_POST['devhub_buy_now'])) {
         return wc_get_checkout_url();
     }
+
+    // Only enforce PRG for POST-based add-to-cart (the single product form).
+    // GET-based links (archive/shop loop buttons) go through here too but
+    // they already redirect fine; stripping params from their URL is safe.
+    if (!empty($_POST['add-to-cart']) && $product instanceof \WC_Product) {
+        $parent_id = $product->get_parent_id();
+        return get_permalink($parent_id ?: $product->get_id());
+    }
+
+    // For GET add-to-cart links, strip the params from whatever URL WC built.
+    if (is_string($url) && $url !== '') {
+        return remove_query_arg(['add-to-cart', 'variation_id'], $url);
+    }
+
     return $url;
 }
 

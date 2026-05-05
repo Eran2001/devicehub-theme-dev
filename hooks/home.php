@@ -40,25 +40,51 @@ function devhub_render_hero_section(): void
                             <div class="devhub-hero__viewport">
                                 <div class="devhub-hero__track">
                                     <?php foreach ($hero_slides as $index => $slide):
-                                        $slide_image_id = (int) get_post_thumbnail_id($slide);
-                                        $slide_title = trim((string) get_the_title($slide));
+                                        $slide_image_id  = (int) get_post_thumbnail_id($slide);
+                                        $mobile_image_id = (int) get_post_meta($slide->ID, '_devhub_mobile_image_id', true);
+                                        $slide_title     = trim((string) get_the_title($slide));
+                                        $alt             = $slide_title !== '' ? $slide_title : __('Hero banner', 'devicehub-theme');
+                                        $loading         = $index === 0 ? 'eager' : 'lazy';
                                         ?>
                                         <article class="devhub-hero__slide"
                                             aria-label="<?php echo esc_attr(sprintf(__('Hero slide %1$d of %2$d', 'devicehub-theme'), $index + 1, $slide_count)); ?>">
                                             <div class="devhub-hero__slide-media">
-                                                <?php
-                                                echo wp_get_attachment_image(
-                                                    $slide_image_id,
-                                                    'full',
-                                                    false,
-                                                    [
-                                                        'class' => 'devhub-hero__slide-image',
-                                                        'alt' => $slide_title !== '' ? $slide_title : __('Hero banner', 'devicehub-theme'),
-                                                        'loading' => $index === 0 ? 'eager' : 'lazy',
-                                                        'decoding' => 'async',
-                                                    ]
-                                                );
-                                                ?>
+                                                <?php if ($mobile_image_id > 0): ?>
+                                                    <?php echo wp_get_attachment_image(
+                                                        $slide_image_id,
+                                                        'full',
+                                                        false,
+                                                        [
+                                                            'class'    => 'devhub-hero__slide-image devhub-hero__slide-image--desktop',
+                                                            'alt'      => $alt,
+                                                            'loading'  => $loading,
+                                                            'decoding' => 'async',
+                                                        ]
+                                                    ); ?>
+                                                    <?php echo wp_get_attachment_image(
+                                                        $mobile_image_id,
+                                                        'full',
+                                                        false,
+                                                        [
+                                                            'class'    => 'devhub-hero__slide-image devhub-hero__slide-image--mobile',
+                                                            'alt'      => $alt,
+                                                            'loading'  => $loading,
+                                                            'decoding' => 'async',
+                                                        ]
+                                                    ); ?>
+                                                <?php else: ?>
+                                                    <?php echo wp_get_attachment_image(
+                                                        $slide_image_id,
+                                                        'full',
+                                                        false,
+                                                        [
+                                                            'class'    => 'devhub-hero__slide-image',
+                                                            'alt'      => $alt,
+                                                            'loading'  => $loading,
+                                                            'decoding' => 'async',
+                                                        ]
+                                                    ); ?>
+                                                <?php endif; ?>
                                             </div>
                                         </article>
                                     <?php endforeach; ?>
@@ -178,6 +204,7 @@ function devhub_render_promo_banner_section(string $placement, string $aria_labe
     foreach ($banners as $banner) {
         $banner_id = (int) $banner->ID;
         $image_id = (int) get_post_thumbnail_id($banner_id);
+        $mobile_image_id = (int) get_post_meta($banner_id, DEVHUB_PROMO_BANNER_MOBILE_IMAGE_META, true);
 
         if ($image_id <= 0) {
             continue;
@@ -185,6 +212,7 @@ function devhub_render_promo_banner_section(string $placement, string $aria_labe
 
         $link = devhub_get_promo_banner_link($banner_id);
         $title = trim((string) get_the_title($banner_id));
+        $alt = $title !== '' ? $title : __('Promo banner', 'devicehub-theme');
         ?>
         <section class="devhub-preorder" aria-label="<?php echo esc_attr($aria_label); ?>">
             <div class="wf-container">
@@ -192,19 +220,46 @@ function devhub_render_promo_banner_section(string $placement, string $aria_labe
                     <a href="<?php echo esc_url($link); ?>" class="devhub-preorder__link">
                 <?php endif; ?>
 
-                <?php
-                echo wp_get_attachment_image(
-                    $image_id,
-                    'full',
-                    false,
-                    [
-                        'class' => 'devhub-preorder__img',
-                        'alt' => $title !== '' ? $title : __('Promo banner', 'devicehub-theme'),
-                        'loading' => 'lazy',
-                        'decoding' => 'async',
-                    ]
-                );
-                ?>
+                <?php if ($mobile_image_id > 0): ?>
+                    <?php
+                    echo wp_get_attachment_image(
+                        $image_id,
+                        'full',
+                        false,
+                        [
+                            'class' => 'devhub-preorder__img devhub-preorder__img--desktop',
+                            'alt' => $alt,
+                            'loading' => 'lazy',
+                            'decoding' => 'async',
+                        ]
+                    );
+                    echo wp_get_attachment_image(
+                        $mobile_image_id,
+                        'full',
+                        false,
+                        [
+                            'class' => 'devhub-preorder__img devhub-preorder__img--mobile',
+                            'alt' => $alt,
+                            'loading' => 'lazy',
+                            'decoding' => 'async',
+                        ]
+                    );
+                    ?>
+                <?php else: ?>
+                    <?php
+                    echo wp_get_attachment_image(
+                        $image_id,
+                        'full',
+                        false,
+                        [
+                            'class' => 'devhub-preorder__img',
+                            'alt' => $alt,
+                            'loading' => 'lazy',
+                            'decoding' => 'async',
+                        ]
+                    );
+                    ?>
+                <?php endif; ?>
 
                 <?php if ($link !== ''): ?>
                     </a>

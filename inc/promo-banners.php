@@ -11,6 +11,7 @@ defined('ABSPATH') || exit;
 
 const DEVHUB_PROMO_BANNER_PLACEMENT_META = '_devhub_promo_banner_placement';
 const DEVHUB_PROMO_BANNER_LINK_META = '_devhub_promo_banner_link';
+const DEVHUB_PROMO_BANNER_MOBILE_IMAGE_META = '_devhub_promo_banner_mobile_image_id';
 
 add_action('init', 'devhub_register_promo_banners');
 
@@ -166,6 +167,15 @@ function devhub_add_promo_banner_meta_boxes(): void
         'side',
         'high'
     );
+
+    add_meta_box(
+        'devhub-promo-banner-mobile-image',
+        __('Mobile Image', 'devicehub-theme'),
+        'devhub_render_promo_banner_mobile_image_box',
+        'devhub_promo_banner',
+        'side',
+        'default'
+    );
 }
 
 function devhub_render_promo_banner_settings_box(WP_Post $post): void
@@ -203,7 +213,81 @@ function devhub_render_promo_banner_help_box(): void
     echo '<li>' . esc_html__('Banner Area', 'devicehub-theme') . '</li>';
     echo '<li>' . esc_html__('Banner Image (Featured Image)', 'devicehub-theme') . '</li>';
     echo '</ul>';
+    echo '<p style="margin-top:12px;">' . esc_html__('Optional: add a taller Mobile Image for screens 767px and below.', 'devicehub-theme') . '</p>';
     echo '<p style="margin-top:12px;">' . esc_html__('Use the Order field in Page Attributes to control banner order inside the same area.', 'devicehub-theme') . '</p>';
+}
+
+function devhub_render_promo_banner_mobile_image_box(WP_Post $post): void
+{
+    $mobile_image_id = (int) get_post_meta($post->ID, DEVHUB_PROMO_BANNER_MOBILE_IMAGE_META, true);
+    $has_image = $mobile_image_id > 0;
+    ?>
+    <div id="devhub-promo-mobile-image-wrap">
+        <div id="devhub-promo-mobile-image-preview" <?php echo !$has_image ? 'style="display:none;"' : ''; ?>>
+            <?php if ($has_image): ?>
+                <?php echo wp_get_attachment_image($mobile_image_id, [200, 120], false, ['style' => 'width:100%;height:auto;border-radius:4px;margin-bottom:8px;display:block;']); ?>
+            <?php endif; ?>
+        </div>
+        <input type="hidden" name="devhub_promo_banner_mobile_image_id" id="devhub-promo-mobile-image-id" value="<?php echo esc_attr($has_image ? (string) $mobile_image_id : ''); ?>">
+        <button type="button" id="devhub-promo-mobile-image-upload" class="button button-primary" style="width:100%;margin-bottom:4px;">
+            <?php echo $has_image ? esc_html__('Change Mobile Image', 'devicehub-theme') : esc_html__('Upload Mobile Image', 'devicehub-theme'); ?>
+        </button>
+        <button type="button" id="devhub-promo-mobile-image-remove" class="button" style="width:100%;<?php echo !$has_image ? 'display:none;' : ''; ?>">
+            <?php esc_html_e('Remove Mobile Image', 'devicehub-theme'); ?>
+        </button>
+    </div>
+    <p class="description" style="margin-top:8px;font-size:11px;">
+        <?php esc_html_e('Optional. Shown on screens ≤767px. If not set, the desktop banner image is used.', 'devicehub-theme'); ?>
+    </p>
+    <script>
+    (function () {
+        var frame;
+        var uploadBtn = document.getElementById('devhub-promo-mobile-image-upload');
+        var removeBtn = document.getElementById('devhub-promo-mobile-image-remove');
+        var input = document.getElementById('devhub-promo-mobile-image-id');
+        var preview = document.getElementById('devhub-promo-mobile-image-preview');
+
+        if (!uploadBtn || !removeBtn || !input || !preview) {
+            return;
+        }
+
+        uploadBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            if (frame) {
+                frame.open();
+                return;
+            }
+
+            frame = wp.media({
+                title: '<?php echo esc_js(__('Select Mobile Promo Banner Image', 'devicehub-theme')); ?>',
+                button: { text: '<?php echo esc_js(__('Use this image', 'devicehub-theme')); ?>' },
+                multiple: false,
+                library: { type: 'image' }
+            });
+
+            frame.on('select', function () {
+                var att = frame.state().get('selection').first().toJSON();
+                input.value = att.id;
+                preview.innerHTML = '<img src="' + att.url + '" style="width:100%;height:auto;border-radius:4px;margin-bottom:8px;display:block;">';
+                preview.style.display = '';
+                removeBtn.style.display = '';
+                uploadBtn.textContent = '<?php echo esc_js(__('Change Mobile Image', 'devicehub-theme')); ?>';
+            });
+
+            frame.open();
+        });
+
+        removeBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            input.value = '';
+            preview.innerHTML = '';
+            preview.style.display = 'none';
+            removeBtn.style.display = 'none';
+            uploadBtn.textContent = '<?php echo esc_js(__('Upload Mobile Image', 'devicehub-theme')); ?>';
+        });
+    })();
+    </script>
+    <?php
 }
 
 add_action('save_post_devhub_promo_banner', 'devhub_save_promo_banner_meta', 10, 3);
@@ -236,6 +320,13 @@ function devhub_save_promo_banner_meta(int $post_id, WP_Post $post, bool $update
         update_post_meta($post_id, DEVHUB_PROMO_BANNER_LINK_META, $link);
     } else {
         delete_post_meta($post_id, DEVHUB_PROMO_BANNER_LINK_META);
+    }
+
+    $mobile_image_id = isset($_POST['devhub_promo_banner_mobile_image_id']) ? absint($_POST['devhub_promo_banner_mobile_image_id']) : 0;
+    if ($mobile_image_id > 0) {
+        update_post_meta($post_id, DEVHUB_PROMO_BANNER_MOBILE_IMAGE_META, $mobile_image_id);
+    } else {
+        delete_post_meta($post_id, DEVHUB_PROMO_BANNER_MOBILE_IMAGE_META);
     }
 
     $thumbnail_id = absint($_POST['_thumbnail_id'] ?? get_post_thumbnail_id($post_id));

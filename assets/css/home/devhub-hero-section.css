@@ -248,6 +248,10 @@
   display: block;
 }
 
+.devhub-hero__slide-image--mobile {
+  display: none;
+}
+
 .devhub-hero__arrow {
   position: absolute;
   top: 50%;
@@ -364,6 +368,14 @@
 @media (max-width: 767px) {
   .devhub-hero {
     margin-bottom: 24px;
+  }
+
+  .devhub-hero__slide-image--desktop {
+    display: none;
+  }
+
+  .devhub-hero__slide-image--mobile {
+    display: block;
   }
 
   .devhub-hero__arrow {

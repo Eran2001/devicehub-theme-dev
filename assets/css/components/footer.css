@@ -174,6 +174,7 @@
 .dh-footer__copyright {
   margin-top: 3rem;
   padding-top: 1.8rem;
+  padding-bottom: 1.5rem;
   border-top: 1px solid rgba(255, 255, 255, 0.24);
   color: var(--devhub-white);
   font-size: var(--devhub-text-xl);
@@ -198,12 +199,12 @@
   }
 
   .dh-footer__inner {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
     gap: 2.8rem;
   }
 
-  .dh-footer__brand {
-    grid-column: 1 / -1;
+  .dh-footer__logo img {
+    height: 4rem;
   }
 
   .dh-footer__middle {
@@ -217,7 +218,7 @@
 
   .dh-footer__col--contact {
     grid-column: auto;
-    max-width: 32rem;
+    max-width: none;
   }
 }
 
@@ -228,12 +229,8 @@
   }
 
   .dh-footer__inner {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
     gap: 1.8rem;
-  }
-
-  .dh-footer__brand {
-    grid-column: 1 / -1;
   }
 
   .dh-footer__logo {
@@ -241,7 +238,7 @@
   }
 
   .dh-footer__logo img {
-    height: 4.2rem;
+    height: 3rem;
   }
 
   .dh-footer__badges {

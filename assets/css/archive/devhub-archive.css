@@ -4,6 +4,21 @@
    Depends on: style.css, product-card.css
    ========================================================================== */
 
+body.woocommerce,
+body.woocommerce-page,
+body.tax-pwb-brand {
+  background-color: #fff !important;
+}
+
+body.woocommerce #content,
+body.woocommerce-page #content,
+body.tax-pwb-brand #content,
+body.woocommerce .woo-products,
+body.woocommerce-page .woo-products,
+body.tax-pwb-brand .woo-products {
+  background-color: #fff;
+}
+
 /* ==========================================================================
    1. Page bar (breadcrumb left, title right)
    ========================================================================== */

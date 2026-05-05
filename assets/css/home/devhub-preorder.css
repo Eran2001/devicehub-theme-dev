@@ -10,3 +10,17 @@
   display: block;
   border-radius: var(--devhub-radius-md);
 }
+
+.devhub-preorder__img--mobile {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .devhub-preorder__img--desktop {
+    display: none;
+  }
+
+  .devhub-preorder__img--mobile {
+    display: block;
+  }
+}
