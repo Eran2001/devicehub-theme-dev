@@ -75,12 +75,48 @@ function devhub_address_fields( WC_Order $order, string $type ): array {
 
     return $fields;
 }
+
+/**
+ * Build a compact address preview matching the checkout saved-address card.
+ *
+ * @param WC_Order $order
+ * @param string   $type 'billing' | 'shipping'
+ * @return array{name:string,address:string}
+ */
+function devhub_order_address_preview( WC_Order $order, string $type ): array {
+    $get = fn( string $field ) => call_user_func( [ $order, "get_{$type}_{$field}" ] );
+
+    $countries    = WC()->countries->get_countries();
+    $country_code = (string) $get( 'country' );
+    $country      = $country_code !== '' ? ( $countries[ $country_code ] ?? $country_code ) : '';
+
+    $name = trim( (string) $get( 'first_name' ) . ' ' . (string) $get( 'last_name' ) );
+
+    $address_parts = array_filter(
+        [
+            $get( 'address_1' ),
+            $get( 'address_2' ),
+            $get( 'city' ),
+            $get( 'postcode' ),
+            $country,
+            $type === 'billing' ? $order->get_billing_phone() : '',
+        ],
+        static fn( $value ) => trim( (string) $value ) !== ''
+    );
+
+    return [
+        'name'    => $name,
+        'address' => implode( ', ', array_map( 'wc_clean', $address_parts ) ),
+    ];
+}
 ?>
 
 <section class="woocommerce-customer-details devhub-order-customer-details">
 
     <?php
-    $sections = [ 'billing' => __( 'Billing address', 'woocommerce' ) ];
+    $sections          = [ 'billing' => __( 'Billing address', 'woocommerce' ) ];
+    $use_compact_cards = function_exists( 'is_order_received_page' ) && is_order_received_page();
+
     if ( $show_shipping ) {
         $sections['shipping'] = __( 'Shipping address', 'woocommerce' );
     }
@@ -88,10 +124,30 @@ function devhub_address_fields( WC_Order $order, string $type ): array {
     foreach ( $sections as $type => $title ) :
         $fields = devhub_address_fields( $order, $type );
         if ( empty( $fields ) ) continue;
+        $preview = devhub_order_address_preview( $order, $type );
     ?>
 
-    <div class="devhub-order-address-card">
-        <h2 class="devhub-order-address-card__title"><?php echo esc_html( $title ); ?></h2>
+    <?php if ( $use_compact_cards ) : ?>
+        <details class="devhub-order-address-card">
+            <summary class="devhub-order-address-card__summary">
+                <span class="devhub-order-address-card__heading">
+                    <span class="devhub-order-address-card__title"><?php echo esc_html( $title ); ?></span>
+                    <span class="devhub-order-address-card__toggle" aria-hidden="true"></span>
+                </span>
+                <span class="devhub-order-address-preview">
+                    <?php if ( $preview['name'] !== '' ) : ?>
+                        <span class="devhub-order-address-preview__name"><?php echo esc_html( $preview['name'] ); ?></span>
+                    <?php endif; ?>
+                    <?php if ( $preview['address'] !== '' ) : ?>
+                        <span class="devhub-order-address-preview__address"><?php echo esc_html( $preview['address'] ); ?></span>
+                    <?php endif; ?>
+                </span>
+            </summary>
+    <?php else : ?>
+        <div class="devhub-order-address-card">
+            <h2 class="devhub-order-address-card__title"><?php echo esc_html( $title ); ?></h2>
+    <?php endif; ?>
+
         <div class="devhub-order-address-grid">
             <?php foreach ( $fields as $field ) : ?>
                 <div class="devhub-order-address-field">
@@ -102,7 +158,12 @@ function devhub_address_fields( WC_Order $order, string $type ): array {
         </div>
 
         <?php do_action( 'woocommerce_order_details_after_customer_address', $type, $order ); ?>
-    </div>
+
+    <?php if ( $use_compact_cards ) : ?>
+        </details>
+    <?php else : ?>
+        </div>
+    <?php endif; ?>
 
     <?php endforeach; ?>
 

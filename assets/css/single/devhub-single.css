@@ -1428,6 +1428,52 @@
     grid-template-columns: 1fr;
     gap: 24px;
   }
+  .devhub-single__option-label {
+    font-size: 16px !important;
+    line-height: 1.35 !important;
+    margin-bottom: 8px !important;
+  }
+  .devhub-single__stock {
+    gap: 8px;
+    font-size: 18px;
+    line-height: 1.3;
+  }
+  .devhub-single__stock-dot {
+    width: 10px;
+    height: 10px;
+  }
+  .devhub-single__color-swatches,
+  .devhub-single__storage-options {
+    width: 100%;
+    max-width: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 4px;
+  }
+  .devhub-single__color-swatches::-webkit-scrollbar,
+  .devhub-single__storage-options::-webkit-scrollbar {
+    display: none;
+  }
+  .devhub-single__color-swatch {
+    flex: 0 0 40px;
+    width: 40px;
+    height: 40px;
+  }
+  .devhub-single__color-swatch .fas {
+    font-size: 13px;
+  }
+  .devhub-single__storage-btn {
+    flex: 0 0 auto;
+    min-width: 76px;
+    min-height: 42px;
+    padding: 9px 16px;
+    font-size: 14px;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
   .devhub-single__actions {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
@@ -1677,16 +1723,16 @@
     font-size: 14px;
   }
   .devhub-single__bundle-name {
-    font-size: var(--devhub-text-lg);
+    font-size: 18px;
     line-height: 1.35;
-    min-height: calc(var(--devhub-text-lg) * 1.35 * 2);
+    min-height: calc(18px * 1.35 * 2);
   }
   .devhub-single__bundle-meta {
     margin-bottom: 10px;
     padding-bottom: 10px;
   }
   .devhub-single__bundle-desc {
-    font-size: var(--devhub-text-lg);
+    font-size: 16px;
     line-height: 1.45;
     -webkit-line-clamp: 3;
   }

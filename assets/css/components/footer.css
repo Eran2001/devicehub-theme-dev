@@ -207,38 +207,114 @@
   }
 
   .dh-footer__middle {
-    grid-column: 1 / -1;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 2rem;
+    display: contents;
+  }
+
+  .dh-footer__col--links,
+  .dh-footer__col--contact {
+    min-width: 0;
   }
 
   .dh-footer__col--contact {
-    grid-column: 1 / -1;
+    grid-column: auto;
     max-width: 32rem;
   }
 }
 
 @media (max-width: 35.95em) {
   #wf_footer.wf_footer--one {
-    padding-bottom: calc(8.8rem + env(safe-area-inset-bottom, 0px));
+    padding-top: 2.4rem;
+    padding-bottom: calc(7.4rem + env(safe-area-inset-bottom, 0px));
   }
 
   .dh-footer__inner {
-    grid-template-columns: 1fr;
-    gap: 2.4rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.8rem;
   }
 
   .dh-footer__brand {
-    grid-column: auto;
+    grid-column: 1 / -1;
+  }
+
+  .dh-footer__logo {
+    margin-bottom: 1.4rem;
+  }
+
+  .dh-footer__logo img {
+    height: 4.2rem;
+  }
+
+  .dh-footer__badges {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+  }
+
+  .dh-footer__badge img {
+    height: 3.6rem;
   }
 
   .dh-footer__middle {
-    grid-column: auto;
-    grid-template-columns: 1fr;
-    gap: 2.4rem;
+    display: contents;
+  }
+
+  .dh-footer__col--links,
+  .dh-footer__col--contact {
+    min-width: 0;
+  }
+
+  .dh-footer__heading {
+    margin-bottom: 0.8rem;
+    padding-bottom: 0.6rem;
+    font-size: 1.8rem;
+  }
+
+  .dh-footer__links li {
+    margin-bottom: 0.35rem;
+  }
+
+  .dh-footer__links a,
+  .dh-footer__contact li {
+    font-size: 1.5rem;
+    line-height: 1.35;
   }
 
   .dh-footer__col--contact {
+    grid-column: auto;
     max-width: none;
+  }
+
+  .dh-footer__contact {
+    margin-bottom: 1.4rem;
+  }
+
+  .dh-footer__contact li {
+    gap: 0.8rem;
+    margin-bottom: 0.45rem;
+  }
+
+  .dh-footer__contact li i {
+    font-size: 1.3rem;
+    width: 1.5rem;
+  }
+
+  .dh-footer__social {
+    gap: 0.8rem;
+  }
+
+  .dh-footer__social li a {
+    width: 3.4rem;
+    height: 3.4rem;
+  }
+
+  .dh-footer__social li a img {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+
+  .dh-footer__copyright {
+    margin-top: 1.8rem;
+    padding-top: 1.2rem;
+    font-size: 1.4rem;
   }
 }

@@ -1550,6 +1550,11 @@ body.devhub-mobile-menu-locked {
   z-index: 99999 !important;
 }
 
+/* Temporarily hide the header side docker trigger while keeping the drawer/widget code available. */
+#wf_header .wf_navbar-sidebar-item {
+  display: none !important;
+}
+
 /* ==========================================================================
    7. Hamburger + account icon — orange to match brand
    ========================================================================== */
