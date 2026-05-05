@@ -257,17 +257,11 @@
 
 @media (hover: none), (pointer: coarse) {
   .devhub-product-card__action {
-    position: static;
-    width: 100%;
-    margin-top: 4px;
-    border-radius: var(--devhub-radius-md);
-    opacity: 1;
-    transform: none;
-    pointer-events: auto;
+    display: none;
   }
 
   .devhub-product-card__action--disabled {
-    pointer-events: none;
+    display: none;
   }
 }
 

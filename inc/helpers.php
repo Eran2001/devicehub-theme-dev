@@ -802,6 +802,12 @@ function devhub_render_product_card(WC_Product $product, string $img_override = 
                 <?php echo wp_kses_post(devhub_get_product_card_price_html($product)); ?>
             </div>
 
+            <?php if ($has_bundle): ?>
+                <span class="devhub-product-card__bundle">
+                    <?php esc_html_e('Bundle Offer', 'devicehub-theme'); ?>
+                </span>
+            <?php endif; ?>
+
             <?php if ($card_action_disabled): ?>
                 <span class="devhub-product-card__action devhub-product-card__action--disabled">
                     <?php if ($has_bundle): ?>

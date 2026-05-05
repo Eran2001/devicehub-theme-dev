@@ -6,17 +6,119 @@
 
 body.woocommerce,
 body.woocommerce-page,
-body.tax-pwb-brand {
+body.tax-pwb-brand,
+body.tax-product_brand,
+body.tax-pa_brand {
   background-color: #fff !important;
 }
 
 body.woocommerce #content,
 body.woocommerce-page #content,
 body.tax-pwb-brand #content,
+body.tax-product_brand #content,
+body.tax-pa_brand #content,
 body.woocommerce .woo-products,
 body.woocommerce-page .woo-products,
-body.tax-pwb-brand .woo-products {
+body.tax-pwb-brand .woo-products,
+body.tax-product_brand .woo-products,
+body.tax-pa_brand .woo-products {
   background-color: #fff;
+}
+
+body.post-type-archive-product .devhub-archive__grid,
+body.tax-product_cat .devhub-archive__grid,
+body.tax-pwb-brand .devhub-archive__grid,
+body.tax-product_brand .devhub-archive__grid,
+body.tax-pa_brand .devhub-archive__grid {
+  column-gap: 0;
+  row-gap: 36px;
+}
+
+body.post-type-archive-product .devhub-archive__grid .devhub-product-card,
+body.tax-product_cat .devhub-archive__grid .devhub-product-card,
+body.tax-pwb-brand .devhub-archive__grid .devhub-product-card,
+body.tax-product_brand .devhub-archive__grid .devhub-product-card,
+body.tax-pa_brand .devhub-archive__grid .devhub-product-card {
+  background: transparent;
+  border-color: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  outline: 0;
+  padding: 12px;
+}
+
+body.post-type-archive-product .devhub-archive__grid .devhub-product-card::after,
+body.tax-product_cat .devhub-archive__grid .devhub-product-card::after,
+body.tax-pwb-brand .devhub-archive__grid .devhub-product-card::after,
+body.tax-product_brand .devhub-archive__grid .devhub-product-card::after,
+body.tax-pa_brand .devhub-archive__grid .devhub-product-card::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 1px;
+  height: 100%;
+  background: rgba(220, 224, 230, 0.95);
+  pointer-events: none;
+}
+
+body.post-type-archive-product .devhub-archive__grid > .devhub-product-card:nth-child(4n)::after,
+body.tax-product_cat .devhub-archive__grid > .devhub-product-card:nth-child(4n)::after,
+body.tax-pwb-brand .devhub-archive__grid > .devhub-product-card:nth-child(4n)::after,
+body.tax-product_brand .devhub-archive__grid > .devhub-product-card:nth-child(4n)::after,
+body.tax-pa_brand .devhub-archive__grid > .devhub-product-card:nth-child(4n)::after {
+  display: none;
+}
+
+body.post-type-archive-product .devhub-archive__grid .devhub-product-card:hover::after,
+body.post-type-archive-product .devhub-archive__grid .devhub-product-card:focus-within::after,
+body.tax-product_cat .devhub-archive__grid .devhub-product-card:hover::after,
+body.tax-product_cat .devhub-archive__grid .devhub-product-card:focus-within::after,
+body.tax-pwb-brand .devhub-archive__grid .devhub-product-card:hover::after,
+body.tax-pwb-brand .devhub-archive__grid .devhub-product-card:focus-within::after,
+body.tax-product_brand .devhub-archive__grid .devhub-product-card:hover::after,
+body.tax-product_brand .devhub-archive__grid .devhub-product-card:focus-within::after,
+body.tax-pa_brand .devhub-archive__grid .devhub-product-card:hover::after,
+body.tax-pa_brand .devhub-archive__grid .devhub-product-card:focus-within::after {
+  opacity: 0;
+}
+
+body.post-type-archive-product .devhub-archive__grid .devhub-product-card:has(+ .devhub-product-card:hover)::after,
+body.post-type-archive-product .devhub-archive__grid .devhub-product-card:has(+ .devhub-product-card:focus-within)::after,
+body.tax-product_cat .devhub-archive__grid .devhub-product-card:has(+ .devhub-product-card:hover)::after,
+body.tax-product_cat .devhub-archive__grid .devhub-product-card:has(+ .devhub-product-card:focus-within)::after,
+body.tax-pwb-brand .devhub-archive__grid .devhub-product-card:has(+ .devhub-product-card:hover)::after,
+body.tax-pwb-brand .devhub-archive__grid .devhub-product-card:has(+ .devhub-product-card:focus-within)::after,
+body.tax-product_brand .devhub-archive__grid .devhub-product-card:has(+ .devhub-product-card:hover)::after,
+body.tax-product_brand .devhub-archive__grid .devhub-product-card:has(+ .devhub-product-card:focus-within)::after,
+body.tax-pa_brand .devhub-archive__grid .devhub-product-card:has(+ .devhub-product-card:hover)::after,
+body.tax-pa_brand .devhub-archive__grid .devhub-product-card:has(+ .devhub-product-card:focus-within)::after {
+  opacity: 0;
+}
+
+body.post-type-archive-product .devhub-archive__grid .devhub-product-card:hover,
+body.post-type-archive-product .devhub-archive__grid .devhub-product-card:focus-within,
+body.tax-product_cat .devhub-archive__grid .devhub-product-card:hover,
+body.tax-product_cat .devhub-archive__grid .devhub-product-card:focus-within,
+body.tax-pwb-brand .devhub-archive__grid .devhub-product-card:hover,
+body.tax-pwb-brand .devhub-archive__grid .devhub-product-card:focus-within,
+body.tax-product_brand .devhub-archive__grid .devhub-product-card:hover,
+body.tax-product_brand .devhub-archive__grid .devhub-product-card:focus-within,
+body.tax-pa_brand .devhub-archive__grid .devhub-product-card:hover,
+body.tax-pa_brand .devhub-archive__grid .devhub-product-card:focus-within {
+  background: #fff;
+  border-color: transparent;
+  border-radius: 8px;
+  box-shadow: 0 14px 30px rgba(17, 17, 17, 0.12);
+  outline: 1px solid rgba(220, 224, 230, 0.95);
+}
+
+body.post-type-archive-product .devhub-archive__grid .devhub-product-card__img-wrap,
+body.tax-product_cat .devhub-archive__grid .devhub-product-card__img-wrap,
+body.tax-pwb-brand .devhub-archive__grid .devhub-product-card__img-wrap,
+body.tax-product_brand .devhub-archive__grid .devhub-product-card__img-wrap,
+body.tax-pa_brand .devhub-archive__grid .devhub-product-card__img-wrap {
+  border-radius: 0;
 }
 
 /* ==========================================================================
@@ -315,6 +417,38 @@ body.tax-pwb-brand .woo-products {
   gap: 6px;
 }
 
+body.post-type-archive-product .devhub-archive__grid .devhub-product-card__bundle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 4px 10px;
+  background: var(--devhub-primary);
+  color: var(--devhub-white);
+  border: 0;
+  border-radius: 6px;
+  font-size: var(--devhub-text-md);
+  font-weight: 700;
+  line-height: 1;
+}
+
+body.tax-pwb-brand .devhub-archive__grid .devhub-product-card__bundle,
+body.tax-product_brand .devhub-archive__grid .devhub-product-card__bundle,
+body.tax-pa_brand .devhub-archive__grid .devhub-product-card__bundle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 4px 10px;
+  background: var(--devhub-primary);
+  color: var(--devhub-white);
+  border: 0;
+  border-radius: 6px;
+  font-size: var(--devhub-text-md);
+  font-weight: 700;
+  line-height: 1;
+}
+
 .devhub-archive__grid .devhub-product-card__name {
   font-size: var(--devhub-text-2xl);
 }
@@ -344,6 +478,16 @@ body.tax-pwb-brand .woo-products {
   min-height: 34px;
   padding: 8px 14px;
   font-size: var(--devhub-text-lg);
+}
+
+body.post-type-archive-product .devhub-archive__grid .devhub-product-card__action-icon {
+  display: none;
+}
+
+body.tax-pwb-brand .devhub-archive__grid .devhub-product-card__action-icon,
+body.tax-product_brand .devhub-archive__grid .devhub-product-card__action-icon,
+body.tax-pa_brand .devhub-archive__grid .devhub-product-card__action-icon {
+  display: none;
 }
 
 /* ==========================================================================
@@ -446,6 +590,30 @@ body.tax-pwb-brand .woo-products {
   .devhub-archive__grid {
     grid-template-columns: repeat(2, 1fr);
   }
+
+  body.post-type-archive-product .devhub-archive__grid > .devhub-product-card::after,
+  body.tax-product_cat .devhub-archive__grid > .devhub-product-card::after,
+  body.tax-pwb-brand .devhub-archive__grid > .devhub-product-card::after,
+  body.tax-product_brand .devhub-archive__grid > .devhub-product-card::after,
+  body.tax-pa_brand .devhub-archive__grid > .devhub-product-card::after {
+    display: block;
+  }
+
+  body.post-type-archive-product .devhub-archive__grid > .devhub-product-card:nth-child(4n)::after,
+  body.tax-product_cat .devhub-archive__grid > .devhub-product-card:nth-child(4n)::after,
+  body.tax-pwb-brand .devhub-archive__grid > .devhub-product-card:nth-child(4n)::after,
+  body.tax-product_brand .devhub-archive__grid > .devhub-product-card:nth-child(4n)::after,
+  body.tax-pa_brand .devhub-archive__grid > .devhub-product-card:nth-child(4n)::after {
+    display: block;
+  }
+
+  body.post-type-archive-product .devhub-archive__grid > .devhub-product-card:nth-child(2n)::after,
+  body.tax-product_cat .devhub-archive__grid > .devhub-product-card:nth-child(2n)::after,
+  body.tax-pwb-brand .devhub-archive__grid > .devhub-product-card:nth-child(2n)::after,
+  body.tax-product_brand .devhub-archive__grid > .devhub-product-card:nth-child(2n)::after,
+  body.tax-pa_brand .devhub-archive__grid > .devhub-product-card:nth-child(2n)::after {
+    display: none;
+  }
 }
 
 @media (max-width: 768px) {
@@ -469,6 +637,24 @@ body.tax-pwb-brand .woo-products {
 @media (max-width: 480px) {
   .devhub-archive__grid {
     grid-template-columns: 1fr;
+  }
+
+  body.post-type-archive-product .devhub-archive__grid,
+  body.tax-product_cat .devhub-archive__grid,
+  body.tax-product_tag .devhub-archive__grid,
+  body.tax-pwb-brand .devhub-archive__grid,
+  body.tax-product_brand .devhub-archive__grid,
+  body.tax-pa_brand .devhub-archive__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  body.post-type-archive-product .devhub-archive__grid > .devhub-product-card::after,
+  body.tax-product_cat .devhub-archive__grid > .devhub-product-card::after,
+  body.tax-product_tag .devhub-archive__grid > .devhub-product-card::after,
+  body.tax-pwb-brand .devhub-archive__grid > .devhub-product-card::after,
+  body.tax-product_brand .devhub-archive__grid > .devhub-product-card::after,
+  body.tax-pa_brand .devhub-archive__grid > .devhub-product-card::after {
+    display: none;
   }
 
   .devhub-archive-empty-state {
