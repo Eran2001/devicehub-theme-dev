@@ -168,6 +168,9 @@ function devhub_product_has_bundle(int $product_id): bool
 }
 
 /**
+ * Local preview fallback so bundle badges are visible without the bundle API.
+ */
+/**
  * Check whether the synced bundle-package plugin is available.
  */
 function devhub_has_bundle_package_plugin(): bool
@@ -758,6 +761,7 @@ function devhub_render_product_card(WC_Product $product, string $img_override = 
     $discount = devhub_get_discount_percent($product);
     $in_stock = $product->is_in_stock();
     $has_bundle = devhub_product_has_bundle($product->get_id());
+    $show_bundle_badge = $has_bundle;
     $brand_slugs = devhub_get_product_brand_slugs($product->get_id());
     $permalink = $product->get_permalink();
     $name = $product->get_name();
@@ -802,7 +806,7 @@ function devhub_render_product_card(WC_Product $product, string $img_override = 
                 <?php echo wp_kses_post(devhub_get_product_card_price_html($product)); ?>
             </div>
 
-            <?php if ($has_bundle): ?>
+            <?php if ($show_bundle_badge): ?>
                 <span class="devhub-product-card__bundle">
                     <?php esc_html_e('Bundle Offer', 'devicehub-theme'); ?>
                 </span>
