@@ -63,6 +63,9 @@
   const DESKTOP_SIDEBAR_MEDIA = "(min-width: 1025px)";
   const MOBILE_SUMMARY_MEDIA = "(max-width: 1024px)";
   const CHECKOUT_LOADING_OVERLAY_ID = "devhub-checkout-loading-overlay";
+  const ORDER_DETAILS_LAYOUT_SELECTOR = ".devhub-order-details-layout";
+  const ORDER_DETAILS_ITEMS_LIST_SELECTOR = ".devhub-order-items-list";
+  const ORDER_DETAILS_BALANCED_CLASS = "devhub-order-details-layout--balanced";
 
   const state = {};
 
@@ -1759,6 +1762,18 @@
     });
   }
 
+  function syncOrderDetailsCardHeights() {
+    const layout = document.querySelector(ORDER_DETAILS_LAYOUT_SELECTOR);
+    const itemsList = layout?.querySelector(ORDER_DETAILS_ITEMS_LIST_SELECTOR);
+
+    if (!layout || !itemsList) {
+      return;
+    }
+
+    const hasOverflow = itemsList.scrollHeight - itemsList.clientHeight > 1;
+    layout.classList.toggle(ORDER_DETAILS_BALANCED_CLASS, hasOverflow);
+  }
+
   function boot() {
     if (
       !document.querySelector(
@@ -1790,6 +1805,7 @@
     movePaymentStep();
     moveTermsBeforePlaceOrder();
     enforceTermsMessage();
+    syncOrderDetailsCardHeights();
 
     if (!hasBoundViewportListener) {
       hasBoundViewportListener = true;
@@ -1808,6 +1824,7 @@
           moveOrderNoteStep();
           movePaymentStep();
           moveTermsBeforePlaceOrder();
+          syncOrderDetailsCardHeights();
         },
         { passive: true },
       );
@@ -1834,6 +1851,7 @@
       moveOrderNoteStep();
       movePaymentStep();
       moveTermsBeforePlaceOrder();
+      syncOrderDetailsCardHeights();
     });
   }
 
@@ -1880,15 +1898,29 @@
     observer.observe(document.body, { childList: true, subtree: true });
   }
 
+  function initOrderDetailsCardHeights() {
+    syncOrderDetailsCardHeights();
+
+    window.addEventListener(
+      "resize",
+      () => {
+        syncOrderDetailsCardHeights();
+      },
+      { passive: true },
+    );
+  }
+
   syncSidebarRelocationState();
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", () => {
       boot();
       initOrderConfirmationDate();
+      initOrderDetailsCardHeights();
     });
   } else {
     boot();
     initOrderConfirmationDate();
+    initOrderDetailsCardHeights();
   }
 })();

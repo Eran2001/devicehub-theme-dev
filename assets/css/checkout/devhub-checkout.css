@@ -3661,6 +3661,26 @@ dl.dh-order-pkg {
   align-items: start;
 }
 
+.devhub-order-details-layout.devhub-order-details-layout--balanced {
+  align-items: stretch;
+}
+
+.devhub-order-details-layout.devhub-order-details-layout--balanced
+  .devhub-order-details-main,
+.devhub-order-details-layout.devhub-order-details-layout--balanced
+  .devhub-order-summary-card,
+.devhub-order-details-layout.devhub-order-details-layout--balanced
+  .devhub-order-items-card {
+  height: 100%;
+}
+
+.devhub-order-details-layout.devhub-order-details-layout--balanced
+  .devhub-order-items-card,
+.devhub-order-details-layout.devhub-order-details-layout--balanced
+  .devhub-order-summary-card {
+  box-sizing: border-box;
+}
+
 .woocommerce
   .woocommerce-order
   .woocommerce-order-details__title.devhub-order-details__title {
@@ -3677,7 +3697,7 @@ dl.dh-order-pkg {
   display: flex;
   flex-direction: column;
   gap: 0;
-  max-height: 330px;
+  max-height: 290px;
   overflow-y: auto;
   padding-right: 6px;
   scrollbar-width: thin;
@@ -3857,12 +3877,12 @@ dl.dh-order-pkg {
 
 .devhub-order-summary-card__row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
   color: #707070;
   font-family: var(--devhub-font);
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1.5;
 }
 
@@ -3871,7 +3891,7 @@ dl.dh-order-pkg {
   padding-top: 18px;
   border-top: 1px solid #ececec;
   color: #253046;
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 600;
 }
 
@@ -4207,7 +4227,7 @@ dl.dh-order-pkg {
   }
 
   .devhub-order-items-list {
-    max-height: 330px;
+    max-height: 290px;
     padding-right: 0;
   }
 
@@ -4223,15 +4243,13 @@ dl.dh-order-pkg {
   }
 
   .devhub-order-summary-card__value {
-    display: -webkit-box;
+    display: block;
     min-width: 0;
     max-width: 68%;
     margin-left: auto;
-    overflow: hidden;
+    overflow: visible;
     overflow-wrap: anywhere;
     text-align: right;
     white-space: normal;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
   }
 }
