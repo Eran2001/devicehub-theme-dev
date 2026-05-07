@@ -623,6 +623,19 @@
     return item?.key || item?.cart_item_key || item?.item_key || "";
   }
 
+  function syncHeaderCartCount(count = getCartItems().length) {
+    document.querySelectorAll(".wf_navbar-cart-item .cart_count").forEach(
+      (element) => {
+        element.textContent = String(Math.max(0, Number(count) || 0));
+      },
+    );
+  }
+
+  function refreshHeaderCartUi() {
+    syncHeaderCartCount();
+    window.jQuery?.(document.body).trigger("wc_fragment_refresh");
+  }
+
   function getStoreApiNonce() {
     return (
       window.wc?.wcSettings?.getSetting?.("storeApiNonce") ||
@@ -699,10 +712,11 @@
       window.wp?.data
         ?.dispatch?.(CART_STORE_KEY)
         ?.invalidateResolutionForStoreSelector?.("getCartItems");
-      window.jQuery?.(document.body).trigger("wc_fragment_refresh");
+      refreshHeaderCartUi();
       window.setTimeout(() => {
         render();
         enhanceOrderSummaryRemoveButtons();
+        refreshHeaderCartUi();
       }, 120);
     } catch (error) {
       if (button) {

@@ -290,7 +290,7 @@ function devhub_enqueue_scripts(): void
 
     // ── Single product ────────────────────────────────────────────────────────
     if (devhub_is_product_page()) {
-        devhub_script('devhub-product', '/modules/product.js', ['devhub-toast'], true);
+        devhub_script('devhub-product', '/modules/product.js', ['jquery', 'wc-cart-fragments', 'devhub-toast'], true);
     }
 
     // ── Cart ──────────────────────────────────────────────────────────────────
@@ -300,7 +300,7 @@ function devhub_enqueue_scripts(): void
 
     // ── Checkout ──────────────────────────────────────────────────────────────
     if (devhub_is_checkout_page()) {
-        devhub_script('devhub-checkout', '/modules/checkout.js', ['devhub-utils'], true);
+        devhub_script('devhub-checkout', '/modules/checkout.js', ['jquery', 'wc-cart-fragments', 'devhub-utils'], true);
         if (!is_user_logged_in()) {
             devhub_script('devhub-login', '/modules/login.js', [], true);
             devhub_localize_login_script();

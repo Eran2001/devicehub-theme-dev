@@ -8,6 +8,7 @@
   "use strict";
 
   document.addEventListener("DOMContentLoaded", function () {
+    devhubInitHeaderCartFragmentBridge();
     devhubInitTabs();
     devhubInitGallery();
     devhubInitImageZoom();
@@ -22,6 +23,84 @@
     devhubInitBuyNow();
     devhubInitPromoCountdown();
   });
+
+  function devhubInitHeaderCartFragmentBridge() {
+    var $ = window.jQuery;
+    var cartForm = document.querySelector(".devhub-single__cart-form");
+
+    if (!$ || !document.body) {
+      return;
+    }
+
+    function getCookie(name) {
+      var match = document.cookie.match(
+        new RegExp("(?:^|; )" + name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "=([^;]*)"),
+      );
+
+      return match ? decodeURIComponent(match[1]) : "";
+    }
+
+    function getHeaderCartCount() {
+      var countNode = document.querySelector(".wf_navbar-cart-item .cart_count");
+
+      if (!countNode) {
+        return 0;
+      }
+
+      var count = parseInt(countNode.textContent || "0", 10);
+
+      return Number.isFinite(count) ? count : 0;
+    }
+
+    function shouldRefreshOnLoad() {
+      if (window.sessionStorage?.getItem("devhubPendingCartRefresh") === "1") {
+        return true;
+      }
+
+      if (getCookie("woocommerce_items_in_cart")) {
+        return true;
+      }
+
+      if (getCookie("woocommerce_cart_hash") && getHeaderCartCount() === 0) {
+        return true;
+      }
+
+      return false;
+    }
+
+    function requestRefresh() {
+      $(document.body).trigger("wc_fragment_refresh");
+    }
+
+    if (cartForm && cartForm.dataset.devhubCartRefreshBound !== "true") {
+      cartForm.dataset.devhubCartRefreshBound = "true";
+      cartForm.addEventListener("submit", function () {
+        try {
+          window.sessionStorage?.setItem("devhubPendingCartRefresh", "1");
+        } catch (error) {
+          window.console?.warn?.(error);
+        }
+      });
+    }
+
+    $(document.body).on(
+      "wc_fragments_loaded wc_fragments_refreshed added_to_cart removed_from_cart",
+      function () {
+        try {
+          window.sessionStorage?.removeItem("devhubPendingCartRefresh");
+        } catch (error) {
+          window.console?.warn?.(error);
+        }
+      },
+    );
+
+    if (shouldRefreshOnLoad()) {
+      window.setTimeout(requestRefresh, 250);
+      window.addEventListener("pageshow", function () {
+        window.setTimeout(requestRefresh, 150);
+      });
+    }
+  }
 
   function showProductToast(message, type) {
     var toastType = type || "warning";
