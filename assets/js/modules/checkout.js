@@ -851,7 +851,7 @@
   function enhanceProductNameTooltips() {
     document
       .querySelectorAll(
-        ".devhub-checkout-mobile-sidebar-summary .wc-block-components-product-name, .devhub-order-item-card__name-text",
+        ".devhub-checkout-mobile-sidebar-summary .wc-block-components-product-name, .devhub-order-item-card__name-text, .woocommerce-order-received .woocommerce-order-overview__email strong",
       )
       .forEach((name) => {
         const fullName = normalizeText(name.textContent || "");

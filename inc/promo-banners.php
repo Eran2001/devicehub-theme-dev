@@ -213,7 +213,9 @@ function devhub_render_promo_banner_help_box(): void
     echo '<li>' . esc_html__('Banner Area', 'devicehub-theme') . '</li>';
     echo '<li>' . esc_html__('Banner Image (Featured Image)', 'devicehub-theme') . '</li>';
     echo '</ul>';
+    echo '<p style="margin-top:12px;">' . esc_html__('Recommended desktop image size: 2560 x 276 px.', 'devicehub-theme') . '</p>';
     echo '<p style="margin-top:12px;">' . esc_html__('Optional: add a taller Mobile Image for screens 767px and below.', 'devicehub-theme') . '</p>';
+    echo '<p style="margin-top:12px;">' . esc_html__('Recommended mobile image size: 2560 x 559 px.', 'devicehub-theme') . '</p>';
     echo '<p style="margin-top:12px;">' . esc_html__('Use the Order field in Page Attributes to control banner order inside the same area.', 'devicehub-theme') . '</p>';
 }
 

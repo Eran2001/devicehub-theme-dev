@@ -62,7 +62,9 @@ function devhub_add_hero_slide_help_box(): void
 function devhub_render_hero_slide_help_box(): void
 {
     echo '<p>' . esc_html__('Upload the slide image using the Hero Banner Image box.', 'devicehub-theme') . '</p>';
+    echo '<p>' . esc_html__('Recommended desktop image size: 1920 x 493 px.', 'devicehub-theme') . '</p>';
     echo '<p>' . esc_html__('Upload a portrait/square image in the Mobile Image box for better mobile display.', 'devicehub-theme') . '</p>';
+    echo '<p>' . esc_html__('Recommended mobile image size: 2560 x 1261 px.', 'devicehub-theme') . '</p>';
     echo '<p>' . esc_html__('Use the title only as an internal admin label.', 'devicehub-theme') . '</p>';
     echo '<p>' . esc_html__('Use the Order field in Page Attributes to control slide order.', 'devicehub-theme') . '</p>';
 }

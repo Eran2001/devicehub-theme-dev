@@ -117,11 +117,19 @@
         </div>
 
     </div>
-    <?php if ($copyright_text !== ''): ?>
-        <div class="dh-footer__copyright wf-container">
-            <?php echo wp_kses_post($copyright_text); ?>
-        </div>
-    <?php endif; ?>
+    <div class="dh-footer__copyright wf-container">
+        <?php if ($copyright_text !== ''): ?>
+            <span class="dh-footer__copyright-text">
+                <?php echo wp_kses_post($copyright_text); ?>
+            </span>
+            <span class="dh-footer__credit-separator" aria-hidden="true">|</span>
+        <?php endif; ?>
+        <span class="dh-footer__credit">
+            <?php esc_html_e('Designed with', 'devicehub-theme'); ?>
+            <span class="dh-footer__credit-heart" aria-hidden="true">❤</span>
+            <?php esc_html_e('by FinTech Hive (Pvt) Ltd.', 'devicehub-theme'); ?>
+        </span>
+    </div>
 </footer>
 <?php
 do_action('shopire_top_scroller');

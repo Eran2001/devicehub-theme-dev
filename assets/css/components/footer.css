@@ -6,7 +6,7 @@
 
 #wf_footer.wf_footer--one {
   background-color: var(--devhub-primary);
-  padding: 4rem 0 3rem;
+  padding: 4rem 0 0;
 }
 
 #wf_footer .footer-shape {
@@ -172,6 +172,11 @@
 }
 
 .dh-footer__copyright {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.8rem;
   margin-top: 3rem;
   padding-top: 1.8rem;
   padding-bottom: 1.5rem;
@@ -186,6 +191,32 @@
 
 .dh-footer__copyright p {
   margin: 0;
+}
+
+.dh-footer__copyright-text {
+  margin: 0;
+}
+
+.dh-footer__credit-separator {
+  opacity: 0.7;
+}
+
+.dh-footer__credit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: normal;
+  text-transform: none;
+  line-height: inherit;
+}
+
+.dh-footer__credit-heart {
+  font-size: 1em;
+  line-height: 1;
 }
 
 .dh-footer__copyright a {
