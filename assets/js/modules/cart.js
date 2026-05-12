@@ -6,11 +6,41 @@
 	const CHECKOUT_BUTTON_SELECTOR = '.wc-block-cart__submit-button.wc-block-components-button';
 	const PRODUCT_CARD_BUTTON_SELECTOR = '.wc-block-cart .wc-block-components-product-button__button.add_to_cart_button';
 	const DISCOUNT_CHIP_SELECTORS = [
-		'.wc-block-cart__sidebar .wc-block-components-totals-discount__coupon-list-item .wc-block-components-chip__text',
-		'.wc-block-cart__sidebar .wc-block-components-totals-discount__coupon-list-item .wc-block-components-chip',
-		'.wc-block-cart__sidebar .wc-block-components-totals-discount .wc-block-components-chip__text',
+		'.wc-block-cart__sidebar .wc-block-components-totals-discount__coupon-list-item',
 		'.wc-block-cart__sidebar .wc-block-components-totals-discount .wc-block-components-chip',
+		'.wc-block-cart__sidebar .wc-block-components-totals-discount__coupon-list-item .wc-block-components-chip__text',
+		'.wc-block-cart__sidebar .wc-block-components-totals-discount .wc-block-components-chip__text',
 	];
+
+	function updateDiscountChipElement( element, desiredLabel ) {
+		if ( ! element ) {
+			return;
+		}
+
+		const textNodeTarget = element.querySelector( '.wc-block-components-chip__text' );
+
+		if ( textNodeTarget ) {
+			if ( normalizeText( textNodeTarget.textContent ) !== normalizeText( desiredLabel ) ) {
+				textNodeTarget.textContent = desiredLabel;
+			}
+			return;
+		}
+
+		const removeButton = element.querySelector( '.wc-block-components-chip__remove, .wc-block-components-chip__remove-icon, button, svg' );
+		const currentLabel = normalizeText( element.textContent.replace( /\s*[×x]\s*$/, '' ) );
+
+		if ( currentLabel === normalizeText( desiredLabel ) ) {
+			return;
+		}
+
+		if ( removeButton && removeButton.parentNode === element ) {
+			element.textContent = desiredLabel + ' ';
+			element.appendChild( removeButton );
+			return;
+		}
+
+		element.textContent = desiredLabel;
+	}
 
 	function normalizeText( value ) {
 		return String( value || '' ).trim().replace( /\s+/g, ' ' ).toLowerCase();
@@ -129,23 +159,14 @@
 	function replaceDiscountChipLabel() {
 		const summary = window.devhubCartData?.discountSummary || {};
 		const desiredLabel = String( summary.chip_label || '' ).trim();
-		const virtualCouponLabel = String( window.devhubCartData?.virtualCouponLabel || 'Discount' ).trim();
 
 		if ( ! desiredLabel ) {
 			return;
 		}
 
-		const normalizedVirtualCouponLabel = normalizeText( virtualCouponLabel );
-
 		DISCOUNT_CHIP_SELECTORS.forEach( ( selector ) => {
 			document.querySelectorAll( selector ).forEach( ( element ) => {
-				const currentLabel = normalizeText( element.textContent );
-
-				if ( currentLabel !== normalizedVirtualCouponLabel ) {
-					return;
-				}
-
-				element.textContent = desiredLabel;
+				updateDiscountChipElement( element, desiredLabel );
 			} );
 		} );
 	}

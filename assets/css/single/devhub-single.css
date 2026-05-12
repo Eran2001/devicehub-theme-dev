@@ -1052,7 +1052,7 @@
 }
 
 .devhub-single__pricing-table-slot .wdp_table_outter {
-  margin: 0;
+  margin: 0 0 20px;
   padding: 0 !important;
   width: 50%;
   max-width: 520px;

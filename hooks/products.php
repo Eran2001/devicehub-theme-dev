@@ -111,18 +111,36 @@ function devhub_render_product_section(
                 <?php endif; ?>
             </div>
 
-            <div class="devhub-products__grid" id="<?php echo esc_attr($section_id); ?>-grid">
-                <?php
-                while ($query->have_posts()) {
-                    $query->the_post();
-                    $product = wc_get_product(get_the_ID());
-                    if ($product) {
-                        // devhub_render_product_card($product, $img);
-                        devhub_render_product_card($product, get_the_post_thumbnail_url($product->get_id(), 'woocommerce_single') ?: $img);
+            <div class="devhub-products__carousel" data-product-carousel="<?php echo esc_attr($section_id); ?>">
+                <button type="button"
+                    class="devhub-products__carousel-nav devhub-products__carousel-nav--prev"
+                    data-product-scroll="<?php echo esc_attr($section_id); ?>"
+                    data-product-direction="prev"
+                    aria-label="<?php esc_attr_e('Previous products', 'devicehub-theme'); ?>">
+                    <i class="fas fa-chevron-left" aria-hidden="true"></i>
+                </button>
+
+                <div class="devhub-products__grid" id="<?php echo esc_attr($section_id); ?>-grid">
+                    <?php
+                    while ($query->have_posts()) {
+                        $query->the_post();
+                        $product = wc_get_product(get_the_ID());
+                        if ($product) {
+                            // devhub_render_product_card($product, $img);
+                            devhub_render_product_card($product, get_the_post_thumbnail_url($product->get_id(), 'woocommerce_single') ?: $img);
+                        }
                     }
-                }
-                wp_reset_postdata();
-                ?>
+                    wp_reset_postdata();
+                    ?>
+                </div>
+
+                <button type="button"
+                    class="devhub-products__carousel-nav devhub-products__carousel-nav--next"
+                    data-product-scroll="<?php echo esc_attr($section_id); ?>"
+                    data-product-direction="next"
+                    aria-label="<?php esc_attr_e('Next products', 'devicehub-theme'); ?>">
+                    <i class="fas fa-chevron-right" aria-hidden="true"></i>
+                </button>
             </div>
 
             <div class="devhub-products__footer">

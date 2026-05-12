@@ -510,9 +510,21 @@ function devhub_archive_tag_filter_group(): void
                     <?php woocommerce_catalog_ordering(); ?>
                 </div>
 
-                <?php if (woocommerce_product_loop()): ?>
+                <?php if (woocommerce_product_loop()):
+                    $is_archive_mobile_carousel = is_shop() || is_product_category() || is_tax(['pwb-brand', 'product_brand', 'pa_brand']);
+                    if ($is_archive_mobile_carousel):
+                        ?>
+                        <div class="devhub-archive__carousel" data-archive-carousel="product-list">
+                            <button type="button"
+                                class="devhub-archive__carousel-nav devhub-archive__carousel-nav--prev"
+                                data-archive-scroll="product-list"
+                                data-archive-direction="prev"
+                                aria-label="<?php esc_attr_e('Previous products', 'devicehub-theme'); ?>">
+                                <i class="fas fa-chevron-left" aria-hidden="true"></i>
+                            </button>
+                    <?php endif; ?>
 
-                    <div class="devhub-archive__grid">
+                    <div class="devhub-archive__grid" <?php echo $is_archive_mobile_carousel ? 'id="devhub-archive-mobile-grid"' : ''; ?>>
                         <?php
                         while (have_posts()):
                             the_post();
@@ -527,6 +539,17 @@ function devhub_archive_tag_filter_group(): void
                         wp_reset_postdata();
                         ?>
                     </div>
+
+                    <?php if ($is_archive_mobile_carousel): ?>
+                            <button type="button"
+                                class="devhub-archive__carousel-nav devhub-archive__carousel-nav--next"
+                                data-archive-scroll="product-list"
+                                data-archive-direction="next"
+                                aria-label="<?php esc_attr_e('Next products', 'devicehub-theme'); ?>">
+                                <i class="fas fa-chevron-right" aria-hidden="true"></i>
+                            </button>
+                        </div>
+                    <?php endif; ?>
 
                     <div class="devhub-archive__pagination">
                         <div class="woocommerce-pagination woocommerce-Pagination">

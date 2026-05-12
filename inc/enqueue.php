@@ -286,6 +286,9 @@ function devhub_enqueue_scripts(): void
     // ── Archive ───────────────────────────────────────────────────────────────
     if (devhub_is_shop_page() || devhub_is_product_category_page() || devhub_is_brand_page()) {
         devhub_script('devhub-filters', '/modules/filters.js', [], true);
+        if (devhub_is_shop_page() || devhub_is_product_category_page() || devhub_is_brand_page()) {
+            devhub_script('devhub-archive-carousel', '/modules/archive-carousel.js', [], true);
+        }
     }
 
     // ── Single product ────────────────────────────────────────────────────────

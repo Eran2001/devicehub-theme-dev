@@ -1040,6 +1040,116 @@ function devhub_get_active_pricing_rule_rows(): array
     return $rows;
 }
 
+function devhub_format_pricing_rule_admin_value(array $rule_item): string
+{
+    $type = (string) ($rule_item['discount_type'] ?? '');
+    $raw_value = trim((string) ($rule_item['discount_value'] ?? ''));
+
+    $format_money = static function (float $amount): string {
+        return html_entity_decode(wp_strip_all_tags(wc_price($amount)), ENT_QUOTES, get_bloginfo('charset'));
+    };
+
+    $format_number = static function (string $value): string {
+        $formatted_value = trim($value);
+
+        if ($formatted_value !== '' && strpos($formatted_value, '.') !== false) {
+            $formatted_value = rtrim(rtrim($formatted_value, '0'), '.');
+        }
+
+        return $formatted_value;
+    };
+
+    if ($type === 'percent_product_price' || $type === 'percent_total_amount') {
+        return $raw_value !== '' ? $format_number($raw_value) . '%' : '-';
+    }
+
+    if ($type === 'fixed_product_price' || $type === 'fixed_cart_amount') {
+        return $raw_value !== '' ? $format_money((float) $raw_value) : '-';
+    }
+
+    if ($type === 'cart_quantity') {
+        $rule_id = (int) ($rule_item['discount_id'] ?? $rule_item['id'] ?? 0);
+        $quantity_rules = $rule_id > 0 ? get_post_meta($rule_id, 'discount_quantityranges', true) : [];
+
+        if (is_string($quantity_rules) && $quantity_rules !== '') {
+            $quantity_rules = maybe_unserialize($quantity_rules);
+        }
+
+        if (!is_array($quantity_rules) || empty($quantity_rules)) {
+            return '-';
+        }
+
+        $formatted_values = [];
+
+        foreach ($quantity_rules as $quantity_rule) {
+            if (!is_array($quantity_rule)) {
+                continue;
+            }
+
+            $rule_type = strtolower(trim((string) ($quantity_rule['dis_type'] ?? '')));
+            $rule_value = trim((string) ($quantity_rule['dis_value'] ?? ''));
+
+            if ($rule_value === '') {
+                continue;
+            }
+
+            if ($rule_type === 'percentage') {
+                $formatted_values[] = $format_number($rule_value) . '%';
+                continue;
+            }
+
+            if ($rule_type === 'fixed') {
+                $formatted_values[] = $format_money((float) $rule_value);
+            }
+        }
+
+        $formatted_values = array_values(array_unique(array_filter($formatted_values)));
+
+        return !empty($formatted_values) ? implode(', ', $formatted_values) : '-';
+    }
+
+    return $raw_value !== '' ? $raw_value : '-';
+}
+
+add_filter('rest_post_dispatch', function ($response, $server, $request) {
+    if (!($response instanceof WP_REST_Response) || !($request instanceof WP_REST_Request)) {
+        return $response;
+    }
+
+    if ($request->get_method() !== 'GET' || $request->get_route() !== '/awdp/v1/rules/') {
+        return $response;
+    }
+
+    $data = $response->get_data();
+
+    if (!is_array($data) || empty($data)) {
+        return $response;
+    }
+
+    $updated = false;
+
+    foreach ($data as $index => $row) {
+        if (!is_array($row) || !array_key_exists('discount_type', $row) || !array_key_exists('discount_value', $row)) {
+            continue;
+        }
+
+        $formatted_value = devhub_format_pricing_rule_admin_value($row);
+
+        if ($formatted_value === '') {
+            continue;
+        }
+
+        $data[$index]['discount_value'] = $formatted_value;
+        $updated = true;
+    }
+
+    if ($updated) {
+        $response->set_data($data);
+    }
+
+    return $response;
+}, 10, 3);
+
 function devhub_get_pricing_rule_product_ids(array $rule): array
 {
     static $cache = [];
@@ -1223,6 +1333,24 @@ function devhub_get_product_pricing_offer_data(WC_Product $product): array
         return $formatted_value;
     };
 
+    $build_rule_value_label = static function (string $type, string $value) use ($format_money_text, $format_number): string {
+        $normalized_value = trim($value);
+
+        if ($normalized_value === '') {
+            return '';
+        }
+
+        if ($type === 'percent_product_price' || $type === 'percent_total_amount') {
+            return sprintf(__('%s%% OFF', 'devicehub-theme'), $format_number($normalized_value));
+        }
+
+        if ($type === 'fixed_product_price' || $type === 'fixed_cart_amount') {
+            return sprintf(__('%s OFF', 'devicehub-theme'), $format_money_text((float) $normalized_value));
+        }
+
+        return '';
+    };
+
     $get_quantity_caption = static function (string $quantity_type): string {
         if ($quantity_type === 'type_cart') {
             return __('Cart Quantity', 'devicehub-theme');
@@ -1400,6 +1528,24 @@ function devhub_get_cart_discount_summary_data(): array
         return $formatted_value;
     };
 
+    $build_rule_value_label = static function (string $type, string $value) use ($format_money_text, $format_number): string {
+        $normalized_value = trim($value);
+
+        if ($normalized_value === '') {
+            return '';
+        }
+
+        if ($type === 'percent_product_price' || $type === 'percent_total_amount') {
+            return sprintf(__('%s%% OFF', 'devicehub-theme'), $format_number($normalized_value));
+        }
+
+        if ($type === 'fixed_product_price' || $type === 'fixed_cart_amount') {
+            return sprintf(__('%s OFF', 'devicehub-theme'), $format_money_text((float) $normalized_value));
+        }
+
+        return '';
+    };
+
     $find_matching_quantity_rule = static function (array $quantity_rules, int $quantity): ?array {
         foreach ($quantity_rules as $quantity_rule) {
             if (!is_array($quantity_rule)) {
@@ -1417,9 +1563,267 @@ function devhub_get_cart_discount_summary_data(): array
         return null;
     };
 
+    $get_rule_chip_label = static function (array $applied_rule, float $actual_discount_amount) use ($format_money_text, $format_number, $find_matching_quantity_rule): string {
+        $type = (string) ($applied_rule['type'] ?? '');
+        $rule_row = is_array($applied_rule['row'] ?? null) ? $applied_rule['row'] : [];
+        $value = trim((string) ($rule_row['discount_value'] ?? ''));
+        $subtotal_amount = (float) WC()->cart->get_subtotal();
+        $runtime_items = is_array($applied_rule['runtime']['discounts'] ?? null) ? $applied_rule['runtime']['discounts'] : [];
+
+        $resolve_matching_rule_value = static function (string $expected_type) use ($runtime_items): string {
+            if ($expected_type === '' || empty($runtime_items)) {
+                return '';
+            }
+
+            $matched_values = [];
+            $active_rules = devhub_get_active_pricing_rule_rows();
+
+            foreach ($runtime_items as $runtime_item) {
+                $product_id = (int) ($runtime_item['productid'] ?? 0);
+                if ($product_id <= 0) {
+                    continue;
+                }
+
+                $product = wc_get_product($product_id);
+                if (!$product instanceof WC_Product) {
+                    continue;
+                }
+
+                foreach ($active_rules as $candidate_rule) {
+                    if (($candidate_rule['discount_type'] ?? '') !== $expected_type) {
+                        continue;
+                    }
+
+                    $candidate_value = trim((string) ($candidate_rule['discount_value'] ?? ''));
+                    if ($candidate_value === '') {
+                        continue;
+                    }
+
+                    if (devhub_pricing_rule_matches_product($candidate_rule, $product)) {
+                        $matched_values[] = $candidate_value;
+                    }
+                }
+            }
+
+            $matched_values = array_values(array_unique(array_filter($matched_values)));
+
+            return count($matched_values) === 1 ? $matched_values[0] : '';
+        };
+
+        $infer_percentage_label = static function () use ($actual_discount_amount, $subtotal_amount, $format_number): string {
+            if ($actual_discount_amount <= 0 || $subtotal_amount <= 0) {
+                return '';
+            }
+
+            $percentage_value = ($actual_discount_amount / $subtotal_amount) * 100;
+            $rounded_percentage = round($percentage_value, 2);
+
+            if ($rounded_percentage <= 0) {
+                return '';
+            }
+
+            return sprintf(__('%s%% OFF', 'devicehub-theme'), $format_number((string) $rounded_percentage));
+        };
+
+        $format_quantity_rule_label = static function (array $quantity_rule) use ($format_money_text, $format_number): string {
+            $matched_type = strtolower((string) ($quantity_rule['dis_type'] ?? ''));
+            $matched_value = trim((string) ($quantity_rule['dis_value'] ?? ''));
+
+            if ($matched_value === '') {
+                return '';
+            }
+
+            if ($matched_type === 'percentage') {
+                return sprintf(__('%s%% OFF', 'devicehub-theme'), $format_number($matched_value));
+            }
+
+            if ($matched_type === 'fixed') {
+                return sprintf(__('%s OFF', 'devicehub-theme'), $format_money_text((float) $matched_value));
+            }
+
+            return '';
+        };
+
+        if ($type === 'percent_product_price' && $value !== '') {
+            return sprintf(__('%s%% OFF', 'devicehub-theme'), $format_number($value));
+        }
+
+        if ($type === 'percent_product_price') {
+            $resolved_value = $resolve_matching_rule_value($type);
+            if ($resolved_value !== '') {
+                return sprintf(__('%s%% OFF', 'devicehub-theme'), $format_number($resolved_value));
+            }
+
+            $inferred_percentage_label = $infer_percentage_label();
+
+            if ($inferred_percentage_label !== '') {
+                return $inferred_percentage_label;
+            }
+        }
+
+        if ($type === 'percent_total_amount' && $value !== '') {
+            return sprintf(__('%s%% OFF', 'devicehub-theme'), $format_number($value));
+        }
+
+        if ($type === 'percent_total_amount') {
+            $resolved_value = $resolve_matching_rule_value($type);
+            if ($resolved_value !== '') {
+                return sprintf(__('%s%% OFF', 'devicehub-theme'), $format_number($resolved_value));
+            }
+
+            $inferred_percentage_label = $infer_percentage_label();
+
+            if ($inferred_percentage_label !== '') {
+                return $inferred_percentage_label;
+            }
+        }
+
+        if ($type === 'fixed_product_price' || $type === 'fixed_cart_amount') {
+            return sprintf(__('%s OFF', 'devicehub-theme'), $format_money_text($actual_discount_amount));
+        }
+
+        if ($type === 'cart_quantity') {
+            $quantity_rules = is_array($rule_row['quantity_rules'] ?? null) ? $rule_row['quantity_rules'] : [];
+            $quantity_type = (string) ($rule_row['quantity_type'] ?? '');
+            $matching_cart_items = [];
+
+            foreach ((array) WC()->cart->get_cart() as $cart_item) {
+                $product = $cart_item['data'] ?? null;
+                if (!$product instanceof WC_Product || !devhub_pricing_rule_matches_product($rule_row, $product)) {
+                    continue;
+                }
+
+                $matching_cart_items[] = $cart_item;
+            }
+
+            $candidate_labels = [];
+
+            if ($quantity_type === 'type_cart') {
+                $matched_quantity_rule = $find_matching_quantity_rule($quantity_rules, count($matching_cart_items));
+                if (is_array($matched_quantity_rule)) {
+                    $candidate_labels[] = $format_quantity_rule_label($matched_quantity_rule);
+                }
+            } elseif ($quantity_type === 'type_item') {
+                $total_quantity = 0;
+                foreach ($matching_cart_items as $cart_item) {
+                    $total_quantity += max(0, (int) ($cart_item['quantity'] ?? 0));
+                }
+
+                $matched_quantity_rule = $find_matching_quantity_rule($quantity_rules, $total_quantity);
+                if (is_array($matched_quantity_rule)) {
+                    $candidate_labels[] = $format_quantity_rule_label($matched_quantity_rule);
+                }
+            } else {
+                foreach ($matching_cart_items as $cart_item) {
+                    $item_quantity = max(0, (int) ($cart_item['quantity'] ?? 0));
+                    $matched_quantity_rule = $find_matching_quantity_rule($quantity_rules, $item_quantity);
+
+                    if (is_array($matched_quantity_rule)) {
+                        $candidate_labels[] = $format_quantity_rule_label($matched_quantity_rule);
+                    }
+                }
+            }
+
+            $candidate_labels = array_values(array_unique(array_filter($candidate_labels)));
+
+            if (count($candidate_labels) === 1) {
+                return $candidate_labels[0];
+            }
+
+            foreach ($quantity_rules as $quantity_rule) {
+                $quantity_rule_label = $format_quantity_rule_label((array) $quantity_rule);
+
+                if ($quantity_rule_label !== '' && strpos($quantity_rule_label, '%') !== false) {
+                    $candidate_labels[] = $quantity_rule_label;
+                }
+            }
+
+            $candidate_labels = array_values(array_unique(array_filter($candidate_labels)));
+
+            if (count($candidate_labels) === 1) {
+                return $candidate_labels[0];
+            }
+
+            $inferred_percentage_label = $infer_percentage_label();
+            if ($inferred_percentage_label !== '') {
+                return $inferred_percentage_label;
+            }
+        }
+
+        return sprintf(__('%s OFF', 'devicehub-theme'), $format_money_text($actual_discount_amount));
+    };
+
     $actual_discount_amount = (float) WC()->cart->get_coupon_discount_amount($matched_coupon_code, false);
     if ($actual_discount_amount <= 0) {
         return [];
+    }
+
+    $resolve_label_from_cart_rules = static function () use ($actual_discount_amount, $build_rule_value_label): string {
+        $cart_items = WC()->cart ? WC()->cart->get_cart() : [];
+        if (empty($cart_items)) {
+            return '';
+        }
+
+        $cart_subtotal = (float) WC()->cart->get_subtotal();
+        $candidate_labels = [];
+        $tolerance = 0.01;
+
+        foreach (devhub_get_active_pricing_rule_rows() as $rule) {
+            $type = (string) ($rule['discount_type'] ?? '');
+            $value = trim((string) ($rule['discount_value'] ?? ''));
+
+            if ($value === '' || !in_array($type, ['percent_product_price', 'fixed_product_price', 'percent_total_amount', 'fixed_cart_amount'], true)) {
+                continue;
+            }
+
+            $eligible_subtotal = 0.0;
+            $expected_discount = 0.0;
+
+            foreach ($cart_items as $cart_item) {
+                $product = $cart_item['data'] ?? null;
+                if (!$product instanceof WC_Product || !devhub_pricing_rule_matches_product($rule, $product)) {
+                    continue;
+                }
+
+                $quantity = max(1, (int) ($cart_item['quantity'] ?? 1));
+                $line_subtotal = isset($cart_item['line_subtotal']) ? (float) $cart_item['line_subtotal'] : 0.0;
+                $unit_price = $quantity > 0 ? ($line_subtotal / $quantity) : 0.0;
+                $eligible_subtotal += $line_subtotal;
+
+                if ($type === 'percent_product_price') {
+                    $expected_discount += $line_subtotal * (((float) $value) / 100);
+                } elseif ($type === 'fixed_product_price') {
+                    $expected_discount += max(0.0, ($unit_price - (float) $value)) * $quantity;
+                }
+            }
+
+            if ($type === 'percent_total_amount') {
+                $expected_discount = $cart_subtotal * (((float) $value) / 100);
+            } elseif ($type === 'fixed_cart_amount') {
+                $expected_discount = (float) $value;
+            } elseif ($eligible_subtotal <= 0) {
+                continue;
+            }
+
+            if (abs(round($expected_discount, 2) - round($actual_discount_amount, 2)) <= $tolerance) {
+                $candidate_label = $build_rule_value_label($type, $value);
+                if ($candidate_label !== '') {
+                    $candidate_labels[] = $candidate_label;
+                }
+            }
+        }
+
+        $candidate_labels = array_values(array_unique(array_filter($candidate_labels)));
+
+        return count($candidate_labels) === 1 ? $candidate_labels[0] : '';
+    };
+
+    $resolved_label_from_cart_rules = $resolve_label_from_cart_rules();
+    if ($resolved_label_from_cart_rules !== '') {
+        return [
+            'type' => 'resolved_from_cart_rules',
+            'chip_label' => $resolved_label_from_cart_rules,
+        ];
     }
 
     $runtime_discounts = devhub_get_awdp_runtime_discounts();
@@ -1470,6 +1874,25 @@ function devhub_get_cart_discount_summary_data(): array
     }
 
     if (count($applied_rules) !== 1) {
+        $candidate_chip_labels = [];
+
+        foreach ($applied_rules as $applied_rule) {
+            $candidate_label = $get_rule_chip_label($applied_rule, $actual_discount_amount);
+
+            if (strpos($candidate_label, '%') !== false) {
+                $candidate_chip_labels[] = $candidate_label;
+            }
+        }
+
+        $candidate_chip_labels = array_values(array_unique(array_filter($candidate_chip_labels)));
+
+        if (count($candidate_chip_labels) === 1) {
+            return [
+                'type' => 'multiple',
+                'chip_label' => $candidate_chip_labels[0],
+            ];
+        }
+
         return [
             'type' => 'multiple',
             'chip_label' => sprintf(__('%s OFF', 'devicehub-theme'), $format_money_text($actual_discount_amount)),
@@ -1478,74 +1901,10 @@ function devhub_get_cart_discount_summary_data(): array
 
     $applied_rule = $applied_rules[0];
     $type = (string) ($applied_rule['type'] ?? '');
-    $rule_row = is_array($applied_rule['row']) ? $applied_rule['row'] : [];
-    $value = trim((string) ($rule_row['discount_value'] ?? ''));
-
-    if ($type === 'percent_product_price' && $value !== '') {
-        return [
-            'type' => $type,
-            'chip_label' => sprintf(__('%s%% OFF', 'devicehub-theme'), $format_number($value)),
-        ];
-    }
-
-    if ($type === 'percent_total_amount' && $value !== '') {
-        return [
-            'type' => $type,
-            'chip_label' => sprintf(__('%s%% OFF', 'devicehub-theme'), $format_number($value)),
-        ];
-    }
-
-    if ($type === 'fixed_product_price' || $type === 'fixed_cart_amount') {
-        return [
-            'type' => $type,
-            'chip_label' => sprintf(__('%s OFF', 'devicehub-theme'), $format_money_text($actual_discount_amount)),
-        ];
-    }
-
-    if ($type === 'cart_quantity') {
-        $quantity_rules = is_array($rule_row['quantity_rules'] ?? null) ? $rule_row['quantity_rules'] : [];
-        $quantity_type = (string) ($rule_row['quantity_type'] ?? '');
-        $runtime_items = is_array($applied_rule['runtime']['discounts'] ?? null) ? $applied_rule['runtime']['discounts'] : [];
-        $matched_quantity_rule = null;
-
-        if ($quantity_type === 'type_cart') {
-            $matched_quantity_rule = $find_matching_quantity_rule($quantity_rules, count($runtime_items));
-        } elseif ($quantity_type === 'type_item') {
-            $total_quantity = 0;
-            foreach ($runtime_items as $runtime_item) {
-                $total_quantity += (int) ($runtime_item['quantity'] ?? 0);
-            }
-            $matched_quantity_rule = $find_matching_quantity_rule($quantity_rules, $total_quantity);
-        } else {
-            foreach ($runtime_items as $runtime_item) {
-                $matched_quantity_rule = $find_matching_quantity_rule($quantity_rules, (int) ($runtime_item['quantity'] ?? 0));
-                if (is_array($matched_quantity_rule)) {
-                    break;
-                }
-            }
-        }
-
-        if (is_array($matched_quantity_rule)) {
-            $matched_type = strtolower((string) ($matched_quantity_rule['dis_type'] ?? ''));
-            $matched_value = isset($matched_quantity_rule['dis_value']) ? (string) $matched_quantity_rule['dis_value'] : '';
-
-            if ($matched_type === 'percentage' && $matched_value !== '') {
-                return [
-                    'type' => $type,
-                    'chip_label' => sprintf(__('%s%% OFF', 'devicehub-theme'), $format_number($matched_value)),
-                ];
-            }
-        }
-
-        return [
-            'type' => $type,
-            'chip_label' => sprintf(__('%s OFF', 'devicehub-theme'), $format_money_text($actual_discount_amount)),
-        ];
-    }
 
     return [
         'type' => $type ?: 'unknown',
-        'chip_label' => sprintf(__('%s OFF', 'devicehub-theme'), $format_money_text($actual_discount_amount)),
+        'chip_label' => $get_rule_chip_label($applied_rule, $actual_discount_amount),
     ];
 }
 

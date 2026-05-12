@@ -361,6 +361,15 @@
   margin-right: 0;
 }
 
+.wc-block-cart__sidebar
+  .wc-block-components-totals-discount
+  .wc-block-components-chip__remove,
+.wc-block-cart__sidebar
+  .wc-block-components-totals-discount
+  .wc-block-components-chip__remove-icon {
+  display: none !important;
+}
+
 .wc-block-cart__sidebar .wc-block-components-totals-coupon__button:hover {
   background-color: rgba(var(--wf-main-rgb), 0.9) !important;
   border-color: rgba(var(--wf-main-rgb), 0.9) !important;

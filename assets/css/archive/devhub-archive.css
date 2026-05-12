@@ -121,6 +121,19 @@ body.tax-pa_brand .devhub-archive__grid .devhub-product-card__img-wrap {
   border-radius: 0;
 }
 
+body.post-type-archive-product .devhub-archive__grid .devhub-product-card__img-wrap img,
+body.tax-product_cat .devhub-archive__grid .devhub-product-card__img-wrap img,
+body.tax-pwb-brand .devhub-archive__grid .devhub-product-card__img-wrap img,
+body.tax-product_brand .devhub-archive__grid .devhub-product-card__img-wrap img,
+body.tax-pa_brand .devhub-archive__grid .devhub-product-card__img-wrap img,
+body.post-type-archive-product .devhub-archive__grid .devhub-product-card__img-wrap .devhub-product-card__img-placeholder,
+body.tax-product_cat .devhub-archive__grid .devhub-product-card__img-wrap .devhub-product-card__img-placeholder,
+body.tax-pwb-brand .devhub-archive__grid .devhub-product-card__img-wrap .devhub-product-card__img-placeholder,
+body.tax-product_brand .devhub-archive__grid .devhub-product-card__img-wrap .devhub-product-card__img-placeholder,
+body.tax-pa_brand .devhub-archive__grid .devhub-product-card__img-wrap .devhub-product-card__img-placeholder {
+  margin-top: 26px;
+}
+
 /* ==========================================================================
    1. Page bar (breadcrumb left, title right)
    ========================================================================== */
@@ -404,6 +417,14 @@ body.tax-pa_brand .devhub-archive__grid .devhub-product-card__img-wrap {
   gap: 16px;
 }
 
+.devhub-archive__carousel {
+  position: relative;
+}
+
+.devhub-archive__carousel-nav {
+  display: none;
+}
+
 .devhub-archive__grid .devhub-product-card {
   padding: 12px;
 }
@@ -544,6 +565,22 @@ body.tax-pa_brand .devhub-archive__grid .devhub-product-card__bundle::before {
   min-height: 34px;
   padding: 8px 14px;
   font-size: var(--devhub-text-lg);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  body.post-type-archive-product .devhub-archive__grid .devhub-product-card__action {
+    top: 67%;
+  }
+
+  body.tax-product_cat .devhub-archive__grid .devhub-product-card__action {
+    top: 67%;
+  }
+
+  body.tax-pwb-brand .devhub-archive__grid .devhub-product-card__action,
+  body.tax-product_brand .devhub-archive__grid .devhub-product-card__action,
+  body.tax-pa_brand .devhub-archive__grid .devhub-product-card__action {
+    top: 67%;
+  }
 }
 
 body.post-type-archive-product .devhub-archive__grid .devhub-product-card__action-icon {
@@ -730,5 +767,153 @@ body.tax-pa_brand .devhub-archive__grid .devhub-product-card__action-icon {
 
   .devhub-archive-empty-state__message {
     font-size: 1.4rem;
+  }
+}
+
+@media (max-width: 575px) {
+  body.post-type-archive-product .devhub-archive__carousel-nav,
+  body.tax-pwb-brand .devhub-archive__carousel-nav,
+  body.tax-product_brand .devhub-archive__carousel-nav,
+  body.tax-pa_brand .devhub-archive__carousel-nav,
+  body.tax-product_cat .devhub-archive__carousel-nav {
+    position: absolute;
+    top: 50%;
+    z-index: 5;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border: 1px solid rgba(255, 102, 0, 0.22);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.96);
+    color: var(--devhub-primary);
+    box-shadow: 0 10px 22px rgba(17, 17, 17, 0.12);
+    transform: translateY(-50%);
+    transition:
+      color var(--devhub-transition),
+      border-color var(--devhub-transition),
+      background-color var(--devhub-transition),
+      opacity var(--devhub-transition);
+  }
+
+  body.post-type-archive-product .devhub-archive__carousel-nav:hover,
+  body.tax-pwb-brand .devhub-archive__carousel-nav:hover,
+  body.tax-product_brand .devhub-archive__carousel-nav:hover,
+  body.tax-pa_brand .devhub-archive__carousel-nav:hover,
+  body.tax-product_cat .devhub-archive__carousel-nav:hover {
+    border-color: rgba(255, 102, 0, 0.45);
+    background: #fff5f0;
+  }
+
+  body.post-type-archive-product .devhub-archive__carousel-nav:focus,
+  body.post-type-archive-product .devhub-archive__carousel-nav:focus-visible,
+  body.post-type-archive-product .devhub-archive__carousel-nav:active,
+  body.tax-pwb-brand .devhub-archive__carousel-nav:focus,
+  body.tax-pwb-brand .devhub-archive__carousel-nav:focus-visible,
+  body.tax-pwb-brand .devhub-archive__carousel-nav:active,
+  body.tax-product_brand .devhub-archive__carousel-nav:focus,
+  body.tax-product_brand .devhub-archive__carousel-nav:focus-visible,
+  body.tax-product_brand .devhub-archive__carousel-nav:active,
+  body.tax-pa_brand .devhub-archive__carousel-nav:focus,
+  body.tax-pa_brand .devhub-archive__carousel-nav:focus-visible,
+  body.tax-pa_brand .devhub-archive__carousel-nav:active,
+  body.tax-product_cat .devhub-archive__carousel-nav:focus,
+  body.tax-product_cat .devhub-archive__carousel-nav:focus-visible,
+  body.tax-product_cat .devhub-archive__carousel-nav:active {
+    outline: none !important;
+    box-shadow: 0 10px 22px rgba(17, 17, 17, 0.12) !important;
+  }
+
+  body.post-type-archive-product .devhub-archive__carousel-nav:disabled,
+  body.post-type-archive-product .devhub-archive__carousel-nav[disabled],
+  body.tax-pwb-brand .devhub-archive__carousel-nav:disabled,
+  body.tax-pwb-brand .devhub-archive__carousel-nav[disabled],
+  body.tax-product_brand .devhub-archive__carousel-nav:disabled,
+  body.tax-product_brand .devhub-archive__carousel-nav[disabled],
+  body.tax-pa_brand .devhub-archive__carousel-nav:disabled,
+  body.tax-pa_brand .devhub-archive__carousel-nav[disabled],
+  body.tax-product_cat .devhub-archive__carousel-nav:disabled,
+  body.tax-product_cat .devhub-archive__carousel-nav[disabled] {
+    opacity: 0.32;
+    pointer-events: none;
+  }
+
+  body.post-type-archive-product .devhub-archive__carousel-nav.is-hidden,
+  body.tax-pwb-brand .devhub-archive__carousel-nav.is-hidden,
+  body.tax-product_brand .devhub-archive__carousel-nav.is-hidden,
+  body.tax-pa_brand .devhub-archive__carousel-nav.is-hidden,
+  body.tax-product_cat .devhub-archive__carousel-nav.is-hidden {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  body.post-type-archive-product .devhub-archive__carousel-nav--prev,
+  body.tax-pwb-brand .devhub-archive__carousel-nav--prev,
+  body.tax-product_brand .devhub-archive__carousel-nav--prev,
+  body.tax-pa_brand .devhub-archive__carousel-nav--prev,
+  body.tax-product_cat .devhub-archive__carousel-nav--prev {
+    left: 0;
+  }
+
+  body.post-type-archive-product .devhub-archive__carousel-nav--next,
+  body.tax-pwb-brand .devhub-archive__carousel-nav--next,
+  body.tax-product_brand .devhub-archive__carousel-nav--next,
+  body.tax-pa_brand .devhub-archive__carousel-nav--next,
+  body.tax-product_cat .devhub-archive__carousel-nav--next {
+    right: 0;
+  }
+
+  body.post-type-archive-product .devhub-archive__grid,
+  body.tax-pwb-brand .devhub-archive__grid,
+  body.tax-product_brand .devhub-archive__grid,
+  body.tax-pa_brand .devhub-archive__grid,
+  body.tax-product_cat .devhub-archive__grid {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: 80%;
+    gap: 12px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0 44px 8px 0;
+    scroll-snap-type: x mandatory;
+    scroll-padding-left: 0;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  body.post-type-archive-product .devhub-archive__grid::-webkit-scrollbar,
+  body.tax-pwb-brand .devhub-archive__grid::-webkit-scrollbar,
+  body.tax-product_brand .devhub-archive__grid::-webkit-scrollbar,
+  body.tax-pa_brand .devhub-archive__grid::-webkit-scrollbar,
+  body.tax-product_cat .devhub-archive__grid::-webkit-scrollbar {
+    display: none;
+  }
+
+  body.post-type-archive-product .devhub-archive__grid > .devhub-product-card,
+  body.tax-pwb-brand .devhub-archive__grid > .devhub-product-card,
+  body.tax-product_brand .devhub-archive__grid > .devhub-product-card,
+  body.tax-pa_brand .devhub-archive__grid > .devhub-product-card,
+  body.tax-product_cat .devhub-archive__grid > .devhub-product-card {
+    min-width: 0;
+    scroll-snap-align: start;
+  }
+
+  body.post-type-archive-product .devhub-archive__grid--single-card,
+  body.tax-pwb-brand .devhub-archive__grid--single-card,
+  body.tax-product_brand .devhub-archive__grid--single-card,
+  body.tax-pa_brand .devhub-archive__grid--single-card,
+  body.tax-product_cat .devhub-archive__grid--single-card {
+    grid-auto-columns: 100%;
+    padding-right: 0;
+    overflow-x: hidden;
+  }
+
+  body.post-type-archive-product .devhub-archive__grid > .devhub-product-card::after,
+  body.tax-pwb-brand .devhub-archive__grid > .devhub-product-card::after,
+  body.tax-product_brand .devhub-archive__grid > .devhub-product-card::after,
+  body.tax-pa_brand .devhub-archive__grid > .devhub-product-card::after,
+  body.tax-product_cat .devhub-archive__grid > .devhub-product-card::after {
+    display: block;
   }
 }

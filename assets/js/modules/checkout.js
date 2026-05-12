@@ -41,10 +41,10 @@
   const COUPON_INPUT_LABEL_SELECTOR =
     ".wp-block-woocommerce-checkout-order-summary-coupon-form-block .wc-block-components-totals-coupon__input label";
   const DISCOUNT_CHIP_SELECTORS = [
-    ".wc-block-checkout__sidebar .wc-block-components-totals-discount__coupon-list-item .wc-block-components-chip__text",
-    ".wc-block-checkout__sidebar .wc-block-components-totals-discount__coupon-list-item .wc-block-components-chip",
-    ".wc-block-checkout__sidebar .wc-block-components-totals-discount .wc-block-components-chip__text",
+    ".wc-block-checkout__sidebar .wc-block-components-totals-discount__coupon-list-item",
     ".wc-block-checkout__sidebar .wc-block-components-totals-discount .wc-block-components-chip",
+    ".wc-block-checkout__sidebar .wc-block-components-totals-discount__coupon-list-item .wc-block-components-chip__text",
+    ".wc-block-checkout__sidebar .wc-block-components-totals-discount .wc-block-components-chip__text",
   ];
   const CONTACT_EMAIL_INPUT_SELECTOR =
     '.wc-block-checkout__contact-fields .wc-block-components-text-input input[type="email"]';
@@ -136,6 +136,40 @@
       .replace(/\s+/g, " ")
       .trim()
       .toLowerCase();
+  }
+
+  function updateDiscountChipElement(element, desiredLabel) {
+    if (!element) {
+      return;
+    }
+
+    const textNodeTarget = element.querySelector(".wc-block-components-chip__text");
+
+    if (textNodeTarget) {
+      if (normalizeText(textNodeTarget.textContent) !== normalizeText(desiredLabel)) {
+        textNodeTarget.textContent = desiredLabel;
+      }
+      return;
+    }
+
+    const removeButton = element.querySelector(
+      ".wc-block-components-chip__remove, .wc-block-components-chip__remove-icon, button, svg",
+    );
+    const currentLabel = normalizeText(
+      element.textContent.replace(/\s*[×x]\s*$/, ""),
+    );
+
+    if (currentLabel === normalizeText(desiredLabel)) {
+      return;
+    }
+
+    if (removeButton && removeButton.parentNode === element) {
+      element.textContent = desiredLabel + " ";
+      element.appendChild(removeButton);
+      return;
+    }
+
+    element.textContent = desiredLabel;
   }
 
   function isValidMethod(method) {
@@ -1178,23 +1212,14 @@
   function replaceDiscountChipLabel() {
     const summary = config.discountSummary || {};
     const desiredLabel = String(summary.chip_label || "").trim();
-    const virtualCouponLabel = String(
-      config.virtualCouponLabel || "Discount",
-    ).trim();
 
     if (!desiredLabel) {
       return;
     }
 
-    const normalizedVirtualCouponLabel = normalizeText(virtualCouponLabel);
-
     DISCOUNT_CHIP_SELECTORS.forEach((selector) => {
       document.querySelectorAll(selector).forEach((element) => {
-        if (normalizeText(element.textContent) !== normalizedVirtualCouponLabel) {
-          return;
-        }
-
-        element.textContent = desiredLabel;
+        updateDiscountChipElement(element, desiredLabel);
       });
     });
   }
