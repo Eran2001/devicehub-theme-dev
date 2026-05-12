@@ -9,8 +9,31 @@
 
 defined('ABSPATH') || exit;
 
+const DEVHUB_FOOTER_SETTINGS_CAPABILITY = 'manage_devhub_footer_settings';
+
 add_action('admin_menu', 'devhub_register_footer_settings_page');
 add_action('admin_init', 'devhub_register_footer_settings');
+add_action('init', 'devhub_ensure_footer_settings_capability');
+
+function devhub_get_footer_settings_capability(): string
+{
+    return DEVHUB_FOOTER_SETTINGS_CAPABILITY;
+}
+
+function devhub_ensure_footer_settings_capability(): void
+{
+    foreach (['administrator', 'shop_manager'] as $role_name) {
+        $role = get_role($role_name);
+
+        if (!$role instanceof WP_Role) {
+            continue;
+        }
+
+        if (!$role->has_cap(devhub_get_footer_settings_capability())) {
+            $role->add_cap(devhub_get_footer_settings_capability());
+        }
+    }
+}
 
 function devhub_footer_settings_defaults(): array
 {
@@ -206,7 +229,7 @@ function devhub_register_footer_settings_page(): void
     add_menu_page(
         __('Footer Settings', 'devicehub-theme'),
         __('Footer Settings', 'devicehub-theme'),
-        'manage_options',
+        devhub_get_footer_settings_capability(),
         'devhub-footer-settings',
         'devhub_render_footer_settings_page',
         'dashicons-editor-kitchensink',
@@ -284,7 +307,7 @@ function devhub_sanitize_footer_settings($input): array
 
 function devhub_render_footer_settings_page(): void
 {
-    if (!current_user_can('manage_options')) {
+    if (!current_user_can(devhub_get_footer_settings_capability())) {
         return;
     }
 
