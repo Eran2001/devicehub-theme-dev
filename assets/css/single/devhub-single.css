@@ -1152,6 +1152,41 @@
   .devhub-single__pricing-table-slot table.wdp_table.lay_horzntl {
     width: 100% !important;
   }
+
+  .devhub-single__pricing-table-slot table.wdp_table.lay_horzntl {
+    table-layout: fixed !important;
+  }
+
+  .devhub-single__pricing-table-slot table.wdp_table.lay_horzntl thead,
+  .devhub-single__pricing-table-slot table.wdp_table.lay_horzntl tbody {
+    display: table-header-group !important;
+  }
+
+  .devhub-single__pricing-table-slot table.wdp_table.lay_horzntl tbody {
+    display: table-row-group !important;
+  }
+
+  .devhub-single__pricing-table-slot table.wdp_table.lay_horzntl tr {
+    display: table-row !important;
+  }
+
+  .devhub-single__pricing-table-slot table.wdp_table.lay_horzntl td,
+  .devhub-single__pricing-table-slot table.wdp_table.lay_horzntl th {
+    display: table-cell !important;
+    width: auto !important;
+    min-width: 0 !important;
+    vertical-align: middle !important;
+    white-space: normal !important;
+    word-break: normal !important;
+  }
+}
+
+@media (max-width: 575px) {
+  .devhub-single__pricing-table-slot table.wdp_table.lay_horzntl td,
+  .devhub-single__pricing-table-slot table.wdp_table.lay_horzntl th {
+    padding: 10px 12px !important;
+    font-size: 1.2rem;
+  }
 }
 
 .devhub-single__actions {

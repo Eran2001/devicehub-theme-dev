@@ -824,16 +824,10 @@ function devhub_render_product_card(WC_Product $product, string $img_override = 
 
             <?php if ($card_action_disabled): ?>
                 <span class="devhub-product-card__action devhub-product-card__action--disabled">
-                    <?php if ($has_bundle): ?>
-                        <span class="devhub-product-card__action-icon" aria-hidden="true"></span>
-                    <?php endif; ?>
                     <?php echo esc_html($card_action_label); ?>
                 </span>
             <?php else: ?>
                 <a href="<?php echo esc_url($card_action_url); ?>" class="devhub-product-card__action">
-                    <?php if ($has_bundle): ?>
-                        <span class="devhub-product-card__action-icon" aria-hidden="true"></span>
-                    <?php endif; ?>
                     <?php echo esc_html($card_action_label); ?>
                 </a>
             <?php endif; ?>
