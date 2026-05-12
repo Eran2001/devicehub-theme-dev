@@ -759,6 +759,9 @@ function devhub_render_product_card(WC_Product $product, string $img_override = 
 {
     $img_url = $img_override !== '' ? $img_override : wp_get_attachment_image_url($product->get_image_id(), 'devhub-card');
     $discount = devhub_get_discount_percent($product);
+    $pricing_offer = function_exists('devhub_get_product_pricing_offer_data')
+        ? devhub_get_product_pricing_offer_data($product)
+        : [];
     $in_stock = $product->is_in_stock();
     $has_bundle = devhub_product_has_bundle($product->get_id());
     $show_bundle_badge = $has_bundle;
@@ -793,6 +796,13 @@ function devhub_render_product_card(WC_Product $product, string $img_override = 
                 <img src="<?php echo esc_url($img_url); ?>" alt="<?php echo esc_attr($name); ?>" loading="lazy">
             <?php else: ?>
                 <div class="devhub-product-card__img-placeholder" aria-hidden="true"></div>
+            <?php endif; ?>
+
+            <?php if (!empty($pricing_offer['badge_value'])): ?>
+                <span class="devhub-product-card__offer-badge" aria-label="<?php echo esc_attr($pricing_offer['badge_value']); ?>">
+                    <span class="devhub-product-card__offer-value"><?php echo esc_html($pricing_offer['badge_value']); ?></span>
+                    <span class="devhub-product-card__offer-caption"><?php echo esc_html($pricing_offer['badge_caption'] ?? __('Special Offer', 'devicehub-theme')); ?></span>
+                </span>
             <?php endif; ?>
         </a>
 

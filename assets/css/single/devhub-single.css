@@ -405,6 +405,106 @@
   margin-bottom: 16px;
 }
 
+.devhub-single__heading-row {
+  margin-bottom: 1.2rem;
+}
+
+.devhub-single__heading-row .devhub-single__title {
+  margin-bottom: 0;
+}
+
+.devhub-single__offer-badge {
+  position: absolute;
+  top: 14px;
+  left: -72px;
+  z-index: 4;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 236px;
+  min-height: 72px;
+  padding: 0.65rem 1.15rem 0.8rem 3rem;
+  border-radius: 0;
+  background: linear-gradient(180deg, #f31d25 0%, #d81920 100%);
+  box-shadow: 0 14px 28px rgba(181, 39, 30, 0.22);
+  color: var(--devhub-white);
+  text-align: center;
+  flex: 0 0 auto;
+  overflow: hidden;
+  border: 1px solid rgba(169, 14, 18, 0.3);
+  transform: rotate(-45deg);
+  transform-origin: center;
+}
+
+.devhub-single__offer-badge--cart {
+  top: 34px;
+  left: -84px;
+  width: 300px;
+  min-height: 68px;
+  padding: 0.45rem 1.2rem 0.55rem;
+  justify-content: center;
+  gap: 6px;
+}
+
+.devhub-single__offer-badge--cart .devhub-single__offer-badge-caption {
+  padding-right: 0;
+  width: auto;
+}
+
+.devhub-single__offer-badge--cart .devhub-single__offer-badge-value {
+  padding-right: 0;
+  width: auto;
+}
+
+.devhub-single__offer-badge::before {
+  content: none;
+}
+
+.devhub-single__offer-badge::after {
+  content: none;
+}
+
+.devhub-single__offer-badge-kicker {
+  display: none;
+}
+
+.devhub-single__offer-badge-caption {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1;
+  order: 1;
+  white-space: nowrap;
+  transform: none;
+  position: static;
+  align-self: center;
+  text-align: center;
+  width: 100%;
+  padding-right: 1.8rem;
+  box-sizing: border-box;
+}
+
+.devhub-single__offer-badge-value {
+  display: block;
+  margin: 0;
+  font-size: 2.25rem;
+  font-weight: 800;
+  line-height: 0.9;
+  letter-spacing: -0.04em;
+  color: var(--devhub-white);
+  white-space: nowrap;
+  order: 2;
+  align-self: center;
+  text-align: center;
+  width: 100%;
+  padding-right: 1.8rem;
+  box-sizing: border-box;
+}
+
 .devhub-single__price-row {
   display: flex;
   align-items: center;
@@ -514,6 +614,30 @@
   border-radius: 50%;
   flex-shrink: 0;
   background: currentColor;
+}
+
+@media (max-width: 991px) {
+  .devhub-single__heading-row {
+    margin-bottom: 1.2rem;
+  }
+
+  .devhub-single__offer-badge {
+    top: 12px;
+    left: -64px;
+    width: 206px;
+    min-height: 64px;
+    padding: 0.5rem 1rem 0.7rem 2.7rem;
+  }
+
+  .devhub-single__offer-badge-caption {
+    font-size: 0.64rem;
+    padding-right: 1.55rem;
+  }
+
+  .devhub-single__offer-badge-value {
+    font-size: 1.9rem;
+    padding-right: 1.55rem;
+  }
 }
 
 /* Option groups */
@@ -911,6 +1035,123 @@
 /* Cart actions */
 .devhub-single__cart-form {
   margin: 0;
+}
+
+.devhub-single__pricing-table-slot {
+  margin: 0 0 12px;
+}
+
+.devhub-single__pricing-table-slot:empty {
+  display: none;
+}
+
+.devhub-single__pricing-table-slot #dh-pkg-selector,
+.devhub-single__pricing-table-slot .dh-pkg-selector,
+.devhub-single__pricing-table-slot [id^="dh-pkg-selector"] {
+  display: none !important;
+}
+
+.devhub-single__pricing-table-slot .wdp_table_outter {
+  margin: 0;
+  padding: 0 !important;
+  width: 50%;
+  max-width: 520px;
+}
+
+.devhub-single__pricing-table-slot .wdp_table_outter h4 {
+  margin: 0 0 10px !important;
+  font-size: var(--devhub-text-xl);
+  font-weight: 700;
+  color: var(--devhub-dark);
+}
+
+.devhub-single__pricing-table-slot table.wdp_table {
+  width: 100%;
+  margin: 0 !important;
+  border-color: rgba(228, 231, 236, 0.95) !important;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.devhub-single__pricing-table-slot table.wdp_table td,
+.devhub-single__pricing-table-slot table.wdp_table th {
+  padding: 10px 14px !important;
+  font-size: 1.35rem;
+  color: var(--devhub-dark);
+  border-color: rgba(228, 231, 236, 0.95) !important;
+}
+
+.devhub-single__pricing-table-slot table.wdp_table thead td,
+.devhub-single__pricing-table-slot table.wdp_table .wdp_table_head td {
+  background: #f5f7fa;
+  font-weight: 700;
+  color: var(--devhub-black);
+}
+
+.devhub-single__pricing-table-slot table.wdp_table.lay_horzntl {
+  width: 100% !important;
+}
+
+.devhub-single__pricing-table-slot table.wdp_table:not(.lay_horzntl) {
+  width: auto !important;
+  min-width: 0;
+  border: 0 !important;
+  background: transparent;
+  border-radius: 0;
+}
+
+.devhub-single__pricing-table-slot table.wdp_table:not(.lay_horzntl) thead,
+.devhub-single__pricing-table-slot table.wdp_table:not(.lay_horzntl) .wdp_table_head {
+  display: none;
+}
+
+.devhub-single__pricing-table-slot table.wdp_table:not(.lay_horzntl) tbody,
+.devhub-single__pricing-table-slot table.wdp_table:not(.lay_horzntl) .wdp_table_body {
+  display: grid;
+  gap: 6px;
+}
+
+.devhub-single__pricing-table-slot table.wdp_table:not(.lay_horzntl) tr {
+  display: block;
+}
+
+.devhub-single__pricing-table-slot table.wdp_table:not(.lay_horzntl) td {
+  border: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: var(--devhub-dark);
+  font-variant-ligatures: none;
+  font-feature-settings: "liga" 0, "calt" 0;
+}
+
+.devhub-single__pricing-table-slot table.wdp_table:not(.lay_horzntl) .devhub-wdp-arrow {
+  display: inline-block !important;
+  width: auto !important;
+  margin: 0 10px;
+  color: var(--devhub-mid) !important;
+  font-size: 0.9em !important;
+  line-height: 1 !important;
+  text-indent: 0 !important;
+  overflow: visible !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+@media (max-width: 991px) {
+  .devhub-single__pricing-table-slot .wdp_table_outter {
+    width: 100%;
+    max-width: none;
+  }
+
+  .devhub-single__pricing-table-slot table.wdp_table,
+  .devhub-single__pricing-table-slot table.wdp_table.lay_horzntl {
+    width: 100% !important;
+  }
 }
 
 .devhub-single__actions {

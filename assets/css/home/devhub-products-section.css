@@ -250,8 +250,58 @@
 
 .devhub-products .devhub-product-card__img-wrap {
   height: 170px;
-  margin-bottom: 10px;
+  margin-bottom: 26px;
   border-radius: 0;
+  overflow: visible;
+}
+
+.devhub-products .devhub-product-card__offer-badge {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -18px;
+  z-index: 2;
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 28px;
+  padding: 0;
+  border-radius: 0 18px 0 0;
+  background: linear-gradient(90deg, #7a0f8f 0%, #d4147b 38%, #ff0d67 100%);
+  box-shadow: none;
+  color: #fff;
+  text-align: left;
+}
+
+.devhub-products .devhub-product-card__offer-badge::before {
+  content: none;
+}
+
+.devhub-products .devhub-product-card__offer-value {
+  display: block;
+  flex: 0 0 auto;
+  padding: 4px 0 4px 14px;
+  font-size: 1.3rem;
+  font-weight: 800;
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.devhub-products .devhub-product-card__offer-caption {
+  display: block;
+  min-width: 0;
+  margin-top: 1px;
+  padding: 4px 14px 4px 0;
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 244, 251, 0.95);
 }
 
 .devhub-products .devhub-product-card__body {

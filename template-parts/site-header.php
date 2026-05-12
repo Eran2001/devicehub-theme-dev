@@ -91,6 +91,11 @@ $shopire_hs_hdr_bcat = get_theme_mod('shopire_hs_hdr_bcat', '1');
                                                         </h5>
                                                         <?php do_action('shopire_header_bcat_base'); ?>
                                                     <?php endif; ?>
+                                                    <?php
+                                                    if (function_exists('devhub_render_mobile_secondary_nav_sections') && function_exists('devhub_show_secondary_nav') && devhub_show_secondary_nav()) {
+                                                        devhub_render_mobile_secondary_nav_sections();
+                                                    }
+                                                    ?>
                                                 </div>
                                             </div>
                                         </nav>

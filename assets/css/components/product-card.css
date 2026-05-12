@@ -78,6 +78,10 @@
   padding: 12px;
 }
 
+.devhub-product-card__offer-badge {
+  display: none;
+}
+
 .devhub-product-card__img-placeholder {
   width: 100%;
   height: 100%;

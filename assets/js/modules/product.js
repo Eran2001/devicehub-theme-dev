@@ -22,6 +22,8 @@
     devhubInitPaymentCarousel();
     devhubInitBuyNow();
     devhubInitPromoCountdown();
+    devhubNormalizePricingTableDisplay();
+    devhubInitDynamicQuantityPrice();
   });
 
   function devhubInitHeaderCartFragmentBridge() {
@@ -121,6 +123,288 @@
     if (window.console && typeof window.console.warn === "function") {
       window.console.warn(message);
     }
+  }
+
+  function devhubNormalizePricingTableDisplay() {
+    var slot = document.querySelector(".devhub-single__pricing-table-slot");
+    var tables = document.querySelectorAll(".devhub-single__pricing-table-slot .wdp_table");
+
+    if (!slot || !tables.length) {
+      return;
+    }
+
+    function decodeTableData(rawValue) {
+      if (!rawValue) {
+        return [];
+      }
+
+      try {
+        return JSON.parse(rawValue);
+      } catch (jsonError) {
+        try {
+          return JSON.parse(window.atob(rawValue));
+        } catch (base64Error) {
+          try {
+            return JSON.parse(rawValue.replace(/'/g, "\""));
+          } catch (legacyJsonError) {
+            return [];
+          }
+        }
+      }
+    }
+
+    function getCurrencyPrefix() {
+      var currencyNode = document.querySelector(".devhub-single__price .woocommerce-Price-currencySymbol");
+      if (currencyNode && currencyNode.textContent) {
+        return currencyNode.textContent.trim() + " ";
+      }
+
+      var priceNode = document.querySelector(".devhub-single__price");
+      var text = priceNode ? (priceNode.textContent || "").trim() : "";
+      var match = text.match(/^[^\d]+/);
+      return match ? match[0].trim() + " " : "";
+    }
+
+    function formatRange(rule) {
+      var start = String(rule.start_range || "").trim();
+      var end = String(rule.end_range || "").trim();
+
+      if (start && end && start === end) {
+        return start;
+      }
+
+      if (start && end) {
+        return start + " - " + end;
+      }
+
+      if (start) {
+        return start + " +";
+      }
+
+      return "";
+    }
+
+    function formatDiscount(rule, currencyPrefix) {
+      var type = String(rule.dis_type || "").toLowerCase();
+      var rawValue = String(rule.dis_value || "").trim();
+      var numericValue = Number(rawValue);
+
+      function formatMoney(value) {
+        if (!Number.isFinite(value)) {
+          return currencyPrefix + rawValue;
+        }
+
+        var locale = document.documentElement.lang || undefined;
+        var formattedValue = value.toLocaleString(locale, {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
+
+        return currencyPrefix + formattedValue;
+      }
+
+      if (type === "percentage") {
+        return Number.isFinite(numericValue) ? numericValue + "%" : rawValue + "%";
+      }
+
+      if (type === "fixed") {
+        return formatMoney(numericValue);
+      }
+
+      return rawValue;
+    }
+
+    function buildVerticalRows(rules, currencyPrefix) {
+      return rules
+        .map(function (rule) {
+          var range = formatRange(rule);
+          var discount = formatDiscount(rule, currencyPrefix);
+
+          if (!range || !discount) {
+            return "";
+          }
+
+          return "<tr><td>" + range + " <i class=\"fas fa-arrow-right devhub-wdp-arrow\" aria-hidden=\"true\"></i> " + discount + "</td></tr>";
+        })
+        .join("");
+    }
+
+    function buildHorizontalRows(rules, currencyPrefix) {
+      var bodyRows = rules
+        .map(function (rule) {
+          var range = formatRange(rule);
+          var discount = formatDiscount(rule, currencyPrefix);
+
+          if (!range || !discount) {
+            return "";
+          }
+
+          return "<tr><td>" + range + "</td><td>" + discount + "</td></tr>";
+        })
+        .join("");
+
+      return (
+        "<thead><tr class=\"wdp_table_head\"><td>Qty</td><td>Discount</td></tr></thead>" +
+        "<tbody class=\"wdp_table_body\">" + bodyRows + "</tbody>"
+      );
+    }
+
+    var currencyPrefix = getCurrencyPrefix();
+
+    function normalizeTable(table) {
+      var rules = decodeTableData(table.getAttribute("data-table") || "");
+      if (!Array.isArray(rules) || !rules.length) {
+        return false;
+      }
+
+      if (table.classList.contains("lay_horzntl")) {
+        table.innerHTML = buildHorizontalRows(rules, currencyPrefix);
+      } else {
+        table.innerHTML = "<tbody class=\"wdp_table_body\">" + buildVerticalRows(rules, currencyPrefix) + "</tbody>";
+      }
+
+      table.dataset.devhubPricingNormalized = "true";
+      return true;
+    }
+
+    tables.forEach(function (table) {
+      normalizeTable(table);
+    });
+
+    if (slot.dataset.devhubPricingObserverBound === "true") {
+      return;
+    }
+
+    slot.dataset.devhubPricingObserverBound = "true";
+
+    var normalizeSoon = function () {
+      window.requestAnimationFrame(function () {
+        slot.querySelectorAll(".wdp_table").forEach(function (table) {
+          normalizeTable(table);
+        });
+      });
+    };
+
+    var observer = new MutationObserver(function () {
+      normalizeSoon();
+    });
+
+    observer.observe(slot, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+
+    slot.querySelectorAll("input[name=\"quantity\"], .devhub-single__qty-input").forEach(function (input) {
+      input.addEventListener("change", normalizeSoon);
+      input.addEventListener("input", normalizeSoon);
+    });
+
+    window.setTimeout(normalizeSoon, 150);
+    window.setTimeout(normalizeSoon, 500);
+  }
+
+  function devhubInitDynamicQuantityPrice() {
+    var form = document.querySelector(".devhub-single__cart-form");
+    var priceBox = document.querySelector(".devhub-single__price");
+    var quantityInput = form ? form.querySelector('input[name="quantity"]') : null;
+    var variationInput = form ? form.querySelector('input[name="variation_id"]') : null;
+    var addToCartButton = form ? form.querySelector('button[name="add-to-cart"]') : null;
+    var ajaxUrl = window.awdajaxobject && window.awdajaxobject.url;
+
+    if (!form || !priceBox || !quantityInput || !addToCartButton || !ajaxUrl) {
+      return;
+    }
+
+    var requestToken = 0;
+    var debounceTimer = null;
+
+    function getCurrencyPrefix() {
+      var currencyNode = priceBox.querySelector(".woocommerce-Price-currencySymbol");
+      if (currencyNode && currencyNode.textContent) {
+        return currencyNode.textContent.trim() + " ";
+      }
+
+      var text = (priceBox.textContent || "").trim();
+      var match = text.match(/^[^\d]+/);
+      return match ? match[0].trim() + " " : "";
+    }
+
+    function formatMoney(value) {
+      var numericValue = Number(value);
+      if (!Number.isFinite(numericValue)) {
+        return String(value || "");
+      }
+
+      var locale = document.documentElement.lang || undefined;
+      return getCurrencyPrefix() + numericValue.toLocaleString(locale, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+    }
+
+    function renderPrice(price, originalPrice) {
+      var currentPrice = Number(price);
+      var comparePrice = Number(originalPrice);
+
+      if (!Number.isFinite(currentPrice)) {
+        return;
+      }
+
+      if (Number.isFinite(comparePrice) && comparePrice > currentPrice) {
+        priceBox.innerHTML =
+          "<ins><span class=\"woocommerce-Price-amount amount\"><bdi>" + formatMoney(currentPrice) + "</bdi></span></ins> " +
+          "<del><span class=\"woocommerce-Price-amount amount\"><bdi>" + formatMoney(comparePrice) + "</bdi></span></del>";
+        return;
+      }
+
+      priceBox.innerHTML =
+        "<span class=\"woocommerce-Price-amount amount\"><bdi>" + formatMoney(currentPrice) + "</bdi></span>";
+    }
+
+    function requestPriceUpdate() {
+      var quantity = parseInt(quantityInput.value || "1", 10);
+      var productId = addToCartButton.value || "";
+      var variationId = variationInput ? variationInput.value || "" : "";
+
+      if (!productId || !Number.isFinite(quantity) || quantity < 1) {
+        return;
+      }
+
+      requestToken += 1;
+      var token = requestToken;
+      var url = new URL(ajaxUrl, window.location.origin);
+      url.searchParams.set("action", "wdpDynamicDiscount");
+      url.searchParams.set("prodID", productId);
+      url.searchParams.set("varID", variationId);
+      url.searchParams.set("proCount", String(quantity));
+
+      window.fetch(url.toString(), {
+        credentials: "same-origin",
+      })
+        .then(function (response) {
+          return response.json();
+        })
+        .then(function (data) {
+          if (token !== requestToken || !data || typeof data !== "object") {
+            return;
+          }
+
+          renderPrice(data.price, data.originalPrice);
+        })
+        .catch(function () {
+          // Keep the current price if the live quantity request fails.
+        });
+    }
+
+    function queuePriceUpdate() {
+      window.clearTimeout(debounceTimer);
+      debounceTimer = window.setTimeout(requestPriceUpdate, 120);
+    }
+
+    quantityInput.addEventListener("input", queuePriceUpdate);
+    quantityInput.addEventListener("change", queuePriceUpdate);
+    document.addEventListener("devhub:variation-resolved", queuePriceUpdate);
   }
 
   // ── Tabs ──────────────────────────────────────────────────────────────────
@@ -910,6 +1194,7 @@
         }
       }
       syncPurchaseButtons(!!match.in_stock);
+      document.dispatchEvent(new CustomEvent("devhub:variation-resolved"));
       return;
     }
 
@@ -926,6 +1211,7 @@
       galleryController.restoreDefault();
     }
     syncPurchaseButtons(el.dataset.baseIsPurchasable === "1");
+    document.dispatchEvent(new CustomEvent("devhub:variation-resolved"));
 
     if (cartForm && !cartForm.dataset.devhubVariationGuardBound) {
       cartForm.dataset.devhubVariationGuardBound = "true";

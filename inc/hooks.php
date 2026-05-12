@@ -138,6 +138,7 @@ add_filter('loop_shop_per_page', fn() => 12, 20);
 
 add_action('pre_get_posts', 'devhub_filter_archive_by_product_category', 9);
 add_action('pre_get_posts', 'devhub_filter_archive_by_brand');
+add_action('pre_get_posts', 'devhub_filter_archive_by_product_tag');
 
 function devhub_filter_archive_by_product_category(WP_Query $query): void
 {
@@ -244,6 +245,36 @@ function devhub_filter_archive_by_brand(WP_Query $query): void
     $tax_query = devhub_remove_taxonomy_from_tax_query($tax_query, 'pwb-brand');
     $tax_query = devhub_remove_taxonomy_from_tax_query($tax_query, 'pa_brand');
     $tax_query[] = $brand_tax_query;
+    $query->set('tax_query', $tax_query);
+}
+
+function devhub_filter_archive_by_product_tag(WP_Query $query): void
+{
+    if (is_admin() || !$query->is_main_query()) {
+        return;
+    }
+    if (!devhub_is_shop_page() && !devhub_is_product_category_page() && !devhub_is_product_tag_page()) {
+        return;
+    }
+
+    $raw = sanitize_text_field(wp_unslash($_GET['filter_product_tag'] ?? ''));
+    if ($raw === '') {
+        return;
+    }
+
+    $slugs = array_values(array_unique(array_filter(array_map('sanitize_title', explode(',', $raw)))));
+    if (empty($slugs)) {
+        return;
+    }
+
+    $tax_query = (array) $query->get('tax_query');
+    $tax_query = devhub_remove_taxonomy_from_tax_query($tax_query, 'product_tag');
+    $tax_query[] = [
+        'taxonomy' => 'product_tag',
+        'field' => 'slug',
+        'terms' => $slugs,
+        'operator' => 'IN',
+    ];
     $query->set('tax_query', $tax_query);
 }
 
@@ -759,30 +790,844 @@ function devhub_render_secondary_menu_links(): void
     <?php
 }
 
+function devhub_get_pricing_rule_reference_url(array $rule): string
+{
+    $term_candidates = [];
+    $product_candidates = [];
+
+    if (!empty($rule['custom_pl_status']) && !empty($rule['custom_pl']) && is_array($rule['custom_pl'])) {
+        foreach ($rule['custom_pl'] as $group) {
+            if (empty($group['rules']) || !is_array($group['rules'])) {
+                continue;
+            }
+
+            foreach ($group['rules'] as $item) {
+                if (!is_array($item) || empty($item['rule']['value']) || !is_array($item['rule']['value'])) {
+                    continue;
+                }
+
+                $taxonomy = $item['rule']['item'] ?? '';
+                if ($taxonomy === 'product_selection') {
+                    $product_candidates = array_merge($product_candidates, $item['rule']['value']);
+                    continue;
+                }
+
+                $term_candidates[] = [
+                    'taxonomy' => $taxonomy,
+                    'terms' => $item['rule']['value'],
+                ];
+            }
+        }
+    } elseif (!empty($rule['product_list'])) {
+        $product_list_id = (int) $rule['product_list'];
+        $list_type = get_post_meta($product_list_id, 'list_type', true);
+        $list_config = get_post_meta($product_list_id, 'product_list_config', true);
+        $list_config = is_array($list_config) ? $list_config : [];
+
+        if ($list_type === 'dynamic_request' && !empty($list_config['rules']) && is_array($list_config['rules'])) {
+            foreach ($list_config['rules'] as $group) {
+                if (empty($group['rules']) || !is_array($group['rules'])) {
+                    continue;
+                }
+
+                foreach ($group['rules'] as $item) {
+                    if (!is_array($item) || empty($item['rule']['value']) || !is_array($item['rule']['value'])) {
+                        continue;
+                    }
+
+                    $term_candidates[] = [
+                        'taxonomy' => $item['rule']['item'] ?? '',
+                        'terms' => $item['rule']['value'],
+                    ];
+                }
+            }
+        } elseif (!empty($list_config['selectedProducts']) && is_array($list_config['selectedProducts'])) {
+            $product_candidates = $list_config['selectedProducts'];
+        }
+    }
+
+    $product_candidates = array_values(array_unique(array_map('absint', $product_candidates)));
+
+    if (count($product_candidates) === 1) {
+        $product_link = get_permalink($product_candidates[0]);
+        if ($product_link) {
+            return $product_link;
+        }
+    }
+
+    $category_slugs = [];
+    $brand_slugs = [];
+    $tag_slugs = [];
+
+    foreach ($term_candidates as $candidate) {
+        $taxonomy = $candidate['taxonomy'] ?? '';
+        if ($taxonomy === '' || !taxonomy_exists($taxonomy)) {
+            continue;
+        }
+
+        foreach ($candidate['terms'] as $term_id) {
+            $term = get_term((int) $term_id, $taxonomy);
+            if (!$term instanceof WP_Term || is_wp_error($term)) {
+                continue;
+            }
+
+            if ($taxonomy === 'product_cat') {
+                $category_slugs[] = $term->slug;
+                continue;
+            }
+
+            if (in_array($taxonomy, ['product_brand', 'pwb-brand', 'pa_brand'], true)) {
+                $brand_slugs[] = $term->slug;
+                continue;
+            }
+
+            if ($taxonomy === 'product_tag') {
+                $tag_slugs[] = $term->slug;
+            }
+        }
+    }
+
+    $category_slugs = array_values(array_unique(array_filter($category_slugs)));
+    $brand_slugs = array_values(array_unique(array_filter($brand_slugs)));
+    $tag_slugs = array_values(array_unique(array_filter($tag_slugs)));
+
+    if (!empty($category_slugs) || !empty($brand_slugs)) {
+        $shop_url = function_exists('wc_get_page_permalink') ? wc_get_page_permalink('shop') : home_url('/shop/');
+        $query_args = [];
+
+        if (!empty($category_slugs)) {
+            $query_args['filter_product_cat'] = implode(',', $category_slugs);
+        }
+
+        if (!empty($brand_slugs)) {
+            $query_args['filter_brand'] = implode(',', $brand_slugs);
+            $query_args['query_type_brand'] = 'or';
+        }
+
+        if (!empty($tag_slugs)) {
+            $query_args['filter_product_tag'] = implode(',', $tag_slugs);
+        }
+
+        return add_query_arg($query_args, $shop_url);
+    }
+
+    if (!empty($tag_slugs)) {
+        $shop_url = function_exists('wc_get_page_permalink') ? wc_get_page_permalink('shop') : home_url('/shop/');
+        return add_query_arg('filter_product_tag', implode(',', $tag_slugs), $shop_url);
+    }
+
+    $preferred_taxonomies = ['product_cat', 'pwb-brand', 'product_tag'];
+
+    foreach ($preferred_taxonomies as $preferred_taxonomy) {
+        foreach ($term_candidates as $candidate) {
+            if (($candidate['taxonomy'] ?? '') !== $preferred_taxonomy) {
+                continue;
+            }
+
+            foreach ($candidate['terms'] as $term_id) {
+                $term = get_term((int) $term_id, $preferred_taxonomy);
+                if ($term instanceof WP_Term && !is_wp_error($term)) {
+                    $link = get_term_link($term);
+                    if (!is_wp_error($link)) {
+                        return $link;
+                    }
+                }
+            }
+        }
+    }
+
+    foreach ($term_candidates as $candidate) {
+        $taxonomy = $candidate['taxonomy'] ?? '';
+        if ($taxonomy === '' || !taxonomy_exists($taxonomy)) {
+            continue;
+        }
+
+        foreach ($candidate['terms'] as $term_id) {
+            $term = get_term((int) $term_id, $taxonomy);
+            if ($term instanceof WP_Term && !is_wp_error($term)) {
+                $link = get_term_link($term);
+                if (!is_wp_error($link)) {
+                    return $link;
+                }
+            }
+        }
+    }
+
+    foreach ($product_candidates as $product_id) {
+        $product_link = get_permalink((int) $product_id);
+        if ($product_link) {
+            return $product_link;
+        }
+    }
+
+    return function_exists('wc_get_page_permalink') ? wc_get_page_permalink('shop') : home_url('/shop/');
+}
+
+function devhub_get_active_pricing_offer_items(): array
+{
+    $items = [];
+
+    foreach (devhub_get_active_pricing_rule_rows() as $rule) {
+        $items[] = [
+            'label' => $rule['label'],
+            'url' => devhub_get_pricing_rule_reference_url($rule),
+        ];
+    }
+
+    return $items;
+}
+
+function devhub_get_active_pricing_rule_rows(): array
+{
+    static $rows = null;
+
+    if ($rows !== null) {
+        return $rows;
+    }
+
+    $rows = [];
+
+    global $wpdb;
+
+    $rule_ids = $wpdb->get_col(
+        $wpdb->prepare(
+            "
+            SELECT posts.ID
+            FROM {$wpdb->posts} posts
+            INNER JOIN {$wpdb->postmeta} status_meta
+                ON status_meta.post_id = posts.ID
+                AND status_meta.meta_key = %s
+            LEFT JOIN {$wpdb->postmeta} priority_meta
+                ON priority_meta.post_id = posts.ID
+                AND priority_meta.meta_key = %s
+            WHERE posts.post_type = %s
+              AND posts.post_status = %s
+              AND status_meta.meta_value IN ('1', 'true')
+            ORDER BY CAST(COALESCE(priority_meta.meta_value, '999999') AS UNSIGNED) ASC, posts.post_title ASC
+            ",
+            'discount_status',
+            'discount_priority',
+            'awdp_pt_rules',
+            'publish'
+        )
+    );
+
+    if (empty($rule_ids)) {
+        return $rows;
+    }
+
+    foreach ($rule_ids as $rule_id) {
+        $quantity_rules = get_post_meta($rule_id, 'discount_quantityranges', true);
+
+        if (is_string($quantity_rules) && $quantity_rules !== '') {
+            $quantity_rules = maybe_unserialize($quantity_rules);
+        }
+
+        $rows[] = [
+            'id' => (int) $rule_id,
+            'label' => html_entity_decode(get_the_title($rule_id), ENT_QUOTES, get_bloginfo('charset')),
+            'discount_type' => (string) get_post_meta($rule_id, 'discount_type', true),
+            'discount_value' => (string) get_post_meta($rule_id, 'discount_value', true),
+            'dynamic_value' => get_post_meta($rule_id, 'dynamic_value', true),
+            'quantity_type' => (string) get_post_meta($rule_id, 'discount_quantity_type', true),
+            'quantity_rules' => is_array($quantity_rules) ? $quantity_rules : [],
+            'product_list' => (int) get_post_meta($rule_id, 'discount_product_list', true),
+            'custom_pl_status' => (bool) get_post_meta($rule_id, 'discount_custom_pl', true),
+            'custom_pl' => get_post_meta($rule_id, 'custom_product_list', true),
+        ];
+    }
+
+    return $rows;
+}
+
+function devhub_get_pricing_rule_product_ids(array $rule): array
+{
+    static $cache = [];
+
+    $rule_id = (int) ($rule['id'] ?? 0);
+    if ($rule_id <= 0) {
+        return [];
+    }
+
+    if (array_key_exists($rule_id, $cache)) {
+        return $cache[$rule_id];
+    }
+
+    $product_ids = [];
+    $custom_pl = $rule['custom_pl'] ?? [];
+
+    if (!empty($custom_pl) && is_array($custom_pl)) {
+        $tax_query = ['relation' => 'OR'];
+        $has_tax_filters = false;
+
+        foreach ($custom_pl as $group) {
+            if (empty($group['rules']) || !is_array($group['rules'])) {
+                continue;
+            }
+
+            foreach ($group['rules'] as $item) {
+                if (!is_array($item) || empty($item['rule']['item']) || empty($item['rule']['value']) || !is_array($item['rule']['value'])) {
+                    continue;
+                }
+
+                $rule_item = (string) $item['rule']['item'];
+                $values = array_values(array_filter(array_map('absint', $item['rule']['value'])));
+
+                if (empty($values)) {
+                    continue;
+                }
+
+                if ($rule_item === 'product_selection') {
+                    $product_ids = array_merge($product_ids, $values);
+                    continue;
+                }
+
+                if (!taxonomy_exists($rule_item)) {
+                    continue;
+                }
+
+                $has_tax_filters = true;
+                $tax_query[] = [
+                    'taxonomy' => $rule_item,
+                    'field' => 'term_id',
+                    'terms' => $values,
+                    'operator' => strtolower((string) ($item['rule']['condition'] ?? 'in')) === 'notin' ? 'NOT IN' : 'IN',
+                ];
+            }
+        }
+
+        if ($has_tax_filters) {
+            $tax_query_product_ids = get_posts([
+                'post_type' => 'product',
+                'post_status' => ['publish', 'draft'],
+                'posts_per_page' => -1,
+                'fields' => 'ids',
+                'tax_query' => $tax_query,
+            ]);
+
+            if (is_array($tax_query_product_ids)) {
+                $product_ids = array_merge($product_ids, $tax_query_product_ids);
+            }
+        }
+
+        $cache[$rule_id] = array_values(array_unique(array_map('absint', $product_ids)));
+        return $cache[$rule_id];
+    }
+
+    $product_list_id = (int) ($rule['product_list'] ?? 0);
+    if ($product_list_id <= 0) {
+        $cache[$rule_id] = [];
+        return $cache[$rule_id];
+    }
+
+    $list_type = (string) get_post_meta($product_list_id, 'list_type', true);
+    $list_config = get_post_meta($product_list_id, 'product_list_config', true);
+    $list_config = is_array($list_config) ? $list_config : [];
+
+    if ($list_type !== 'dynamic_request') {
+        $product_ids = array_map('absint', (array) ($list_config['selectedProducts'] ?? []));
+        $cache[$rule_id] = array_values(array_unique(array_filter($product_ids)));
+        return $cache[$rule_id];
+    }
+
+    $excluded_products = array_map('absint', (array) ($list_config['excludedProducts'] ?? []));
+    $selected_products = array_map('absint', (array) ($list_config['selectedProducts'] ?? []));
+    $tax_query = [];
+
+    foreach ((array) ($list_config['rules'] ?? []) as $group) {
+        if (empty($group['rules']) || !is_array($group['rules'])) {
+            continue;
+        }
+
+        foreach ($group['rules'] as $item) {
+            if (!is_array($item) || empty($item['rule']['item']) || empty($item['rule']['value']) || !is_array($item['rule']['value'])) {
+                continue;
+            }
+
+            $rule_item = (string) $item['rule']['item'];
+            if (!taxonomy_exists($rule_item)) {
+                continue;
+            }
+
+            $values = array_values(array_filter(array_map('absint', $item['rule']['value'])));
+            if (empty($values)) {
+                continue;
+            }
+
+            $tax_query[] = [
+                'taxonomy' => $rule_item,
+                'field' => 'term_id',
+                'terms' => $values,
+                'operator' => strtolower((string) ($item['rule']['condition'] ?? 'in')) === 'notin' ? 'NOT IN' : 'IN',
+            ];
+        }
+    }
+
+    if (!empty($tax_query)) {
+        array_unshift(
+            $tax_query,
+            [
+                'relation' => strtolower((string) ($list_config['taxRelation'] ?? 'or')) === 'and' ? 'AND' : 'OR',
+            ]
+        );
+
+        $dynamic_product_ids = get_posts([
+            'post_type' => 'product',
+            'post_status' => ['publish', 'draft'],
+            'posts_per_page' => -1,
+            'fields' => 'ids',
+            'post__not_in' => $excluded_products,
+            'tax_query' => $tax_query,
+        ]);
+
+        if (is_array($dynamic_product_ids)) {
+            $product_ids = array_merge($selected_products, $dynamic_product_ids);
+        }
+    } else {
+        $product_ids = $selected_products;
+    }
+
+    if (!empty($excluded_products)) {
+        $product_ids = array_diff($product_ids, $excluded_products);
+    }
+
+    $cache[$rule_id] = array_values(array_unique(array_map('absint', $product_ids)));
+    return $cache[$rule_id];
+}
+
+function devhub_pricing_rule_matches_product(array $rule, WC_Product $product): bool
+{
+    $product_id = $product->get_parent_id() > 0 ? $product->get_parent_id() : $product->get_id();
+    $target_product_ids = devhub_get_pricing_rule_product_ids($rule);
+
+    if (!empty($target_product_ids)) {
+        return in_array($product_id, $target_product_ids, true);
+    }
+
+    return empty($rule['custom_pl']) && (int) ($rule['product_list'] ?? 0) <= 0;
+}
+
+function devhub_get_product_pricing_offer_data(WC_Product $product): array
+{
+    $format_money_text = static function (float $amount): string {
+        return html_entity_decode(wp_strip_all_tags(wc_price($amount)), ENT_QUOTES, get_bloginfo('charset'));
+    };
+
+    $format_number = static function (string $value): string {
+        $formatted_value = trim($value);
+
+        if ($formatted_value !== '' && strpos($formatted_value, '.') !== false) {
+            $formatted_value = rtrim(rtrim($formatted_value, '0'), '.');
+        }
+
+        return $formatted_value;
+    };
+
+    $get_quantity_caption = static function (string $quantity_type): string {
+        if ($quantity_type === 'type_cart') {
+            return __('Cart Quantity', 'devicehub-theme');
+        }
+
+        if ($quantity_type === 'type_item') {
+            return __('Cart Items', 'devicehub-theme');
+        }
+
+        return __('Quantity Offer', 'devicehub-theme');
+    };
+
+    foreach (devhub_get_active_pricing_rule_rows() as $rule) {
+        if (devhub_pricing_rule_matches_product($rule, $product)) {
+            $value = trim((string) ($rule['discount_value'] ?? ''));
+            $type = (string) ($rule['discount_type'] ?? '');
+            $badge_value = __('Sale', 'devicehub-theme');
+            $badge_caption = __('Special Offer', 'devicehub-theme');
+            $formatted_value = $format_number($value);
+            $summary = __('A promotional pricing rule is active for this product.', 'devicehub-theme');
+
+            if ($type === 'percent_product_price' && $value !== '') {
+                $summary = sprintf(__('%s%% off is active for this product.', 'devicehub-theme'), $formatted_value);
+                $badge_value = sprintf(__('%s%% OFF', 'devicehub-theme'), $formatted_value);
+            } elseif ($type === 'fixed_product_price' && $value !== '') {
+                $summary = sprintf(__('A fixed-price offer is active: %s.', 'devicehub-theme'), $format_money_text((float) $value));
+                $badge_value = $format_money_text((float) $value);
+                $badge_caption = __('Offer Price', 'devicehub-theme');
+            } elseif ($type === 'percent_total_amount' && $value !== '') {
+                $summary = sprintf(__('%s%% off is active on the cart total.', 'devicehub-theme'), $formatted_value);
+                $badge_value = sprintf(__('%s%% OFF', 'devicehub-theme'), $formatted_value);
+                $badge_caption = __('Cart Discount', 'devicehub-theme');
+            } elseif ($type === 'fixed_cart_amount' && $value !== '') {
+                $summary = sprintf(__('%s will be deducted from the cart total.', 'devicehub-theme'), $format_money_text((float) $value));
+                $badge_value = $format_money_text((float) $value);
+                $badge_caption = __('Cart Discount', 'devicehub-theme');
+            } elseif ($type === 'cart_quantity') {
+                $quantity_type = (string) ($rule['quantity_type'] ?? '');
+                $quantity_rules = is_array($rule['quantity_rules'] ?? null) ? $rule['quantity_rules'] : [];
+                $badge_caption = $get_quantity_caption($quantity_type);
+                $summary = __('A quantity-based discount is active for this product.', 'devicehub-theme');
+
+                $best_rule = null;
+                foreach ($quantity_rules as $quantity_rule) {
+                    if (!is_array($quantity_rule)) {
+                        continue;
+                    }
+
+                    $rule_value = isset($quantity_rule['dis_value']) ? (float) $quantity_rule['dis_value'] : null;
+                    if ($rule_value === null) {
+                        continue;
+                    }
+
+                    if ($best_rule === null || $rule_value > (float) ($best_rule['dis_value'] ?? 0)) {
+                        $best_rule = $quantity_rule;
+                    }
+                }
+
+                if (is_array($best_rule)) {
+                    $best_type = strtolower((string) ($best_rule['dis_type'] ?? ''));
+                    $best_value = isset($best_rule['dis_value']) ? (string) $best_rule['dis_value'] : '';
+                    $best_formatted_value = $format_number($best_value);
+
+                    if ($best_type === 'percentage' && $best_value !== '') {
+                        $badge_value = sprintf(__('%s%% OFF', 'devicehub-theme'), $best_formatted_value);
+                        $summary = sprintf(__('A quantity-based discount of up to %s%% is active for this product.', 'devicehub-theme'), $best_formatted_value);
+                    } elseif ($best_type === 'fixed' && $best_value !== '') {
+                        $badge_value = sprintf(__('%s OFF', 'devicehub-theme'), $format_money_text((float) $best_value));
+                        $summary = sprintf(__('A quantity-based discount of up to %s is active for this product.', 'devicehub-theme'), $format_money_text((float) $best_value));
+                    } else {
+                        $badge_value = __('Qty Offer', 'devicehub-theme');
+                    }
+                } else {
+                    $badge_value = __('Qty Offer', 'devicehub-theme');
+                }
+            } elseif ($type === 'bogo') {
+                $badge_value = __('BOGO', 'devicehub-theme');
+                $badge_caption = __('Buy X Get X', 'devicehub-theme');
+                $summary = __('A buy-one-get-one style offer is active for this product.', 'devicehub-theme');
+            } elseif ($type === 'gift') {
+                $badge_value = __('Gift', 'devicehub-theme');
+                $badge_caption = __('Gift Product', 'devicehub-theme');
+                $summary = __('A gift-product offer is active for this product.', 'devicehub-theme');
+            } elseif ($type === 'pay_method') {
+                $badge_value = __('Pay Offer', 'devicehub-theme');
+                $badge_caption = __('Payment Method', 'devicehub-theme');
+                $summary = __('A payment-method offer is active for this product.', 'devicehub-theme');
+            } elseif ($type === 'ship_method') {
+                $badge_value = __('Ship Offer', 'devicehub-theme');
+                $badge_caption = __('Shipping Method', 'devicehub-theme');
+                $summary = __('A shipping-method offer is active for this product.', 'devicehub-theme');
+            }
+
+            if ($product->is_type('variable')) {
+                $summary .= ' ' . __('This offer applies across the available variants matched by the rule.', 'devicehub-theme');
+            }
+
+            return [
+                'label' => $rule['label'],
+                'type' => $type,
+                'summary' => $summary,
+                'badge_value' => $badge_value,
+                'badge_caption' => $badge_caption,
+            ];
+        }
+    }
+
+    return [];
+}
+
+function devhub_get_awdp_runtime_discounts(): array
+{
+    if (!class_exists('AWDP_Discount')) {
+        return [];
+    }
+
+    try {
+        $instance = AWDP_Discount::instance();
+    } catch (Throwable $exception) {
+        return [];
+    }
+
+    if (!is_object($instance)) {
+        return [];
+    }
+
+    try {
+        $reflection = new ReflectionObject($instance);
+        if (!$reflection->hasProperty('discounts')) {
+            return [];
+        }
+
+        $property = $reflection->getProperty('discounts');
+        $property->setAccessible(true);
+        $discounts = $property->getValue($instance);
+
+        return is_array($discounts) ? $discounts : [];
+    } catch (ReflectionException $exception) {
+        return [];
+    }
+}
+
+function devhub_get_cart_discount_summary_data(): array
+{
+    if (!function_exists('WC') || !WC()->cart) {
+        return [];
+    }
+
+    $virtual_coupon_label = html_entity_decode((string) (get_option('awdp_fee_label') ?: 'Discount'), ENT_QUOTES, get_bloginfo('charset'));
+    $applied_coupons = array_map('strval', (array) WC()->cart->get_applied_coupons());
+    $matched_coupon_code = '';
+
+    foreach ($applied_coupons as $coupon_code) {
+        if (strcasecmp($coupon_code, $virtual_coupon_label) === 0) {
+            $matched_coupon_code = $coupon_code;
+            break;
+        }
+    }
+
+    if ($matched_coupon_code === '') {
+        return [];
+    }
+
+    $format_money_text = static function (float $amount): string {
+        return html_entity_decode(wp_strip_all_tags(wc_price($amount)), ENT_QUOTES, get_bloginfo('charset'));
+    };
+
+    $format_number = static function (string $value): string {
+        $formatted_value = trim($value);
+
+        if ($formatted_value !== '' && strpos($formatted_value, '.') !== false) {
+            $formatted_value = rtrim(rtrim($formatted_value, '0'), '.');
+        }
+
+        return $formatted_value;
+    };
+
+    $find_matching_quantity_rule = static function (array $quantity_rules, int $quantity): ?array {
+        foreach ($quantity_rules as $quantity_rule) {
+            if (!is_array($quantity_rule)) {
+                continue;
+            }
+
+            $from = isset($quantity_rule['start_range']) ? (int) $quantity_rule['start_range'] : 0;
+            $to = isset($quantity_rule['end_range']) && $quantity_rule['end_range'] !== '' ? (int) $quantity_rule['end_range'] : PHP_INT_MAX;
+
+            if ($quantity >= $from && $quantity <= $to) {
+                return $quantity_rule;
+            }
+        }
+
+        return null;
+    };
+
+    $actual_discount_amount = (float) WC()->cart->get_coupon_discount_amount($matched_coupon_code, false);
+    if ($actual_discount_amount <= 0) {
+        return [];
+    }
+
+    $runtime_discounts = devhub_get_awdp_runtime_discounts();
+    if (empty($runtime_discounts)) {
+        return [
+            'type' => 'unknown',
+            'chip_label' => sprintf(__('%s OFF', 'devicehub-theme'), $format_money_text($actual_discount_amount)),
+        ];
+    }
+
+    $rule_rows_by_id = [];
+    foreach (devhub_get_active_pricing_rule_rows() as $rule_row) {
+        $rule_rows_by_id[(int) $rule_row['id']] = $rule_row;
+    }
+
+    $applied_rules = [];
+
+    foreach ($runtime_discounts as $rule_id => $runtime_discount) {
+        if (!is_array($runtime_discount) || empty($runtime_discount['discounts']) || !is_array($runtime_discount['discounts'])) {
+            continue;
+        }
+
+        $rule_discount_total = 0.0;
+
+        foreach ($runtime_discount['discounts'] as $discount_item) {
+            if (!is_array($discount_item)) {
+                continue;
+            }
+
+            $discount_value = isset($discount_item['discount']) ? (float) $discount_item['discount'] : 0.0;
+            if ($discount_value > 0) {
+                $rule_discount_total += $discount_value;
+            }
+        }
+
+        if ($rule_discount_total <= 0) {
+            continue;
+        }
+
+        $numeric_rule_id = (int) $rule_id;
+        $rule_row = $rule_rows_by_id[$numeric_rule_id] ?? [];
+        $applied_rules[] = [
+            'id' => $numeric_rule_id,
+            'type' => (string) ($runtime_discount['discount_type'] ?? ($rule_row['discount_type'] ?? '')),
+            'runtime' => $runtime_discount,
+            'row' => $rule_row,
+        ];
+    }
+
+    if (count($applied_rules) !== 1) {
+        return [
+            'type' => 'multiple',
+            'chip_label' => sprintf(__('%s OFF', 'devicehub-theme'), $format_money_text($actual_discount_amount)),
+        ];
+    }
+
+    $applied_rule = $applied_rules[0];
+    $type = (string) ($applied_rule['type'] ?? '');
+    $rule_row = is_array($applied_rule['row']) ? $applied_rule['row'] : [];
+    $value = trim((string) ($rule_row['discount_value'] ?? ''));
+
+    if ($type === 'percent_product_price' && $value !== '') {
+        return [
+            'type' => $type,
+            'chip_label' => sprintf(__('%s%% OFF', 'devicehub-theme'), $format_number($value)),
+        ];
+    }
+
+    if ($type === 'percent_total_amount' && $value !== '') {
+        return [
+            'type' => $type,
+            'chip_label' => sprintf(__('%s%% OFF', 'devicehub-theme'), $format_number($value)),
+        ];
+    }
+
+    if ($type === 'fixed_product_price' || $type === 'fixed_cart_amount') {
+        return [
+            'type' => $type,
+            'chip_label' => sprintf(__('%s OFF', 'devicehub-theme'), $format_money_text($actual_discount_amount)),
+        ];
+    }
+
+    if ($type === 'cart_quantity') {
+        $quantity_rules = is_array($rule_row['quantity_rules'] ?? null) ? $rule_row['quantity_rules'] : [];
+        $quantity_type = (string) ($rule_row['quantity_type'] ?? '');
+        $runtime_items = is_array($applied_rule['runtime']['discounts'] ?? null) ? $applied_rule['runtime']['discounts'] : [];
+        $matched_quantity_rule = null;
+
+        if ($quantity_type === 'type_cart') {
+            $matched_quantity_rule = $find_matching_quantity_rule($quantity_rules, count($runtime_items));
+        } elseif ($quantity_type === 'type_item') {
+            $total_quantity = 0;
+            foreach ($runtime_items as $runtime_item) {
+                $total_quantity += (int) ($runtime_item['quantity'] ?? 0);
+            }
+            $matched_quantity_rule = $find_matching_quantity_rule($quantity_rules, $total_quantity);
+        } else {
+            foreach ($runtime_items as $runtime_item) {
+                $matched_quantity_rule = $find_matching_quantity_rule($quantity_rules, (int) ($runtime_item['quantity'] ?? 0));
+                if (is_array($matched_quantity_rule)) {
+                    break;
+                }
+            }
+        }
+
+        if (is_array($matched_quantity_rule)) {
+            $matched_type = strtolower((string) ($matched_quantity_rule['dis_type'] ?? ''));
+            $matched_value = isset($matched_quantity_rule['dis_value']) ? (string) $matched_quantity_rule['dis_value'] : '';
+
+            if ($matched_type === 'percentage' && $matched_value !== '') {
+                return [
+                    'type' => $type,
+                    'chip_label' => sprintf(__('%s%% OFF', 'devicehub-theme'), $format_number($matched_value)),
+                ];
+            }
+        }
+
+        return [
+            'type' => $type,
+            'chip_label' => sprintf(__('%s OFF', 'devicehub-theme'), $format_money_text($actual_discount_amount)),
+        ];
+    }
+
+    return [
+        'type' => $type ?: 'unknown',
+        'chip_label' => sprintf(__('%s OFF', 'devicehub-theme'), $format_money_text($actual_discount_amount)),
+    ];
+}
+
+function devhub_ajax_get_cart_discount_summary(): void
+{
+    wp_send_json_success([
+        'discountSummary' => devhub_get_cart_discount_summary_data(),
+        'virtualCouponLabel' => html_entity_decode((string) (get_option('awdp_fee_label') ?: 'Discount'), ENT_QUOTES, get_bloginfo('charset')),
+    ]);
+}
+
+add_action('wp_ajax_devhub_cart_discount_summary', 'devhub_ajax_get_cart_discount_summary');
+add_action('wp_ajax_nopriv_devhub_cart_discount_summary', 'devhub_ajax_get_cart_discount_summary');
+
+function devhub_get_menu_items_by_location(string $location): array
+{
+    if (!has_nav_menu($location)) {
+        return [];
+    }
+
+    $locations = get_nav_menu_locations();
+    $menu_id = $locations[$location] ?? 0;
+
+    if (!$menu_id) {
+        return [];
+    }
+
+    $menu_items = wp_get_nav_menu_items($menu_id);
+    if (empty($menu_items) || is_wp_error($menu_items)) {
+        return [];
+    }
+
+    $items = [];
+
+    foreach ($menu_items as $menu_item) {
+        if ((int) $menu_item->menu_item_parent !== 0) {
+            continue;
+        }
+
+        $items[] = [
+            'label' => $menu_item->title,
+            'url' => $menu_item->url,
+        ];
+    }
+
+    return $items;
+}
+
+function devhub_get_fallback_offer_items(): array
+{
+    return [
+        ['label' => __('Flash Sale', 'devicehub-theme'), 'url' => home_url('/shop/')],
+        ['label' => __('New Arrivals', 'devicehub-theme'), 'url' => home_url('/shop/')],
+        ['label' => __('Bundle Deals', 'devicehub-theme'), 'url' => home_url('/shop/')],
+        ['label' => __('Mobile Phone Offers', 'devicehub-theme'), 'url' => home_url('/shop/')],
+        ['label' => __('Broadband Offers', 'devicehub-theme'), 'url' => home_url('/shop/')],
+    ];
+}
+
 function devhub_render_secondary_offers(): void
 {
-    if (has_nav_menu('secondary_offers_menu')) {
-        wp_nav_menu([
-            'theme_location' => 'secondary_offers_menu',
-            'container' => false,
-            'menu_class' => 'devhub-secondary-nav__offer-list',
-            'fallback_cb' => false,
-            'depth' => 1,
-        ]);
+    $pricing_rule_items = devhub_get_active_pricing_offer_items();
+
+    if (!empty($pricing_rule_items)) {
+        ?>
+        <ul class="devhub-secondary-nav__offer-list">
+            <?php foreach ($pricing_rule_items as $item): ?>
+                <li>
+                    <a href="<?php echo esc_url($item['url']); ?>"><?php echo esc_html($item['label']); ?></a>
+                </li>
+            <?php endforeach; ?>
+        </ul>
+        <?php
         return;
     }
 
-    $fallback_offers = [
-        __('Flash Sale', 'devicehub-theme'),
-        __('New Arrivals', 'devicehub-theme'),
-        __('Bundle Deals', 'devicehub-theme'),
-        __('Mobile Phone Offers', 'devicehub-theme'),
-        __('Broadband Offers', 'devicehub-theme'),
-    ];
+    $menu_items = devhub_get_menu_items_by_location('secondary_offers_menu');
+    $offer_items = !empty($menu_items) ? $menu_items : devhub_get_fallback_offer_items();
     ?>
     <ul class="devhub-secondary-nav__offer-list">
-        <?php foreach ($fallback_offers as $offer): ?>
-            <li><a href="<?php echo esc_url(home_url('/shop/')); ?>"><?php echo esc_html($offer); ?></a></li>
+        <?php foreach ($offer_items as $item): ?>
+            <li><a href="<?php echo esc_url($item['url']); ?>"><?php echo esc_html($item['label']); ?></a></li>
         <?php endforeach; ?>
     </ul>
     <?php
@@ -923,6 +1768,108 @@ function devhub_render_secondary_nav(): void
                 </a>
             </div>
         </div>
+    </div>
+    <?php
+}
+
+function devhub_render_mobile_secondary_link_list(array $items, string $class_name): void
+{
+    if (empty($items)) {
+        return;
+    }
+    ?>
+    <ul class="<?php echo esc_attr($class_name); ?>">
+        <?php foreach ($items as $item):
+            if (empty($item['label']) || empty($item['url'])) {
+                continue;
+            }
+            ?>
+            <li>
+                <a href="<?php echo esc_url($item['url']); ?>"><?php echo esc_html($item['label']); ?></a>
+            </li>
+        <?php endforeach; ?>
+    </ul>
+    <?php
+}
+
+function devhub_get_mobile_secondary_menu_items(): array
+{
+    $items = devhub_get_menu_items_by_location('secondary_menu');
+
+    if (!empty($items)) {
+        return $items;
+    }
+
+    return [
+        ['label' => __('Hire Purchase', 'devicehub-theme'), 'url' => home_url('/hire-purchase/')],
+        ['label' => __('Gift Vouchers', 'devicehub-theme'), 'url' => home_url('/gift-vouchers/')],
+        ['label' => __('Duty Free', 'devicehub-theme'), 'url' => home_url('/duty-free/')],
+        ['label' => __('Hutch Loyalty', 'devicehub-theme'), 'url' => home_url('/loyalty/')],
+    ];
+}
+
+function devhub_get_mobile_secondary_offer_items(): array
+{
+    $pricing_rule_items = devhub_get_active_pricing_offer_items();
+
+    if (!empty($pricing_rule_items)) {
+        return $pricing_rule_items;
+    }
+
+    $items = devhub_get_menu_items_by_location('secondary_offers_menu');
+
+    if (!empty($items)) {
+        return $items;
+    }
+
+    return devhub_get_fallback_offer_items();
+}
+
+function devhub_render_mobile_secondary_nav_sections(): void
+{
+    $brands = devhub_get_secondary_brands();
+    $brands = array_values(array_filter($brands, static function (WP_Term $brand): bool {
+        return (int) $brand->parent > 0;
+    }));
+
+    if (empty($brands)) {
+        $brands = devhub_get_secondary_brands(0);
+    }
+
+    $quick_links = devhub_get_mobile_secondary_menu_items();
+    $offer_links = devhub_get_mobile_secondary_offer_items();
+    ?>
+    <div class="devhub-mobile-secondary-nav">
+        <?php if (!empty($brands)): ?>
+            <h5 class="title"><?php esc_html_e('Brands', 'devicehub-theme'); ?></h5>
+            <ul class="devhub-mobile-secondary-nav__list devhub-mobile-secondary-nav__list--brands">
+                <?php foreach ($brands as $brand): ?>
+                    <li>
+                        <a href="<?php echo esc_url(get_term_link($brand)); ?>">
+                            <?php echo esc_html($brand->name); ?>
+                        </a>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+        <?php endif; ?>
+
+        <h5 class="title"><?php esc_html_e("Today's Offer", 'devicehub-theme'); ?></h5>
+        <?php devhub_render_mobile_secondary_link_list($offer_links, 'devhub-mobile-secondary-nav__list'); ?>
+
+        <h5 class="title"><?php esc_html_e('Quick Links', 'devicehub-theme'); ?></h5>
+        <?php devhub_render_mobile_secondary_link_list($quick_links, 'devhub-mobile-secondary-nav__list'); ?>
+
+        <h5 class="title"><?php esc_html_e('Support', 'devicehub-theme'); ?></h5>
+        <ul class="devhub-mobile-secondary-nav__list devhub-mobile-secondary-nav__list--support">
+            <li>
+                <a href="<?php echo esc_url(home_url('/my-account/orders/')); ?>">
+                    <?php esc_html_e('Track your order', 'devicehub-theme'); ?>
+                </a>
+            </li>
+            <li>
+                <a href="tel:+94788222888">+94 788 222 888</a>
+            </li>
+        </ul>
     </div>
     <?php
 }

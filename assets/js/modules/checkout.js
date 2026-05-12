@@ -40,6 +40,12 @@
     ".wp-block-woocommerce-checkout-order-summary-coupon-form-block .wc-block-components-totals-coupon__input input";
   const COUPON_INPUT_LABEL_SELECTOR =
     ".wp-block-woocommerce-checkout-order-summary-coupon-form-block .wc-block-components-totals-coupon__input label";
+  const DISCOUNT_CHIP_SELECTORS = [
+    ".wc-block-checkout__sidebar .wc-block-components-totals-discount__coupon-list-item .wc-block-components-chip__text",
+    ".wc-block-checkout__sidebar .wc-block-components-totals-discount__coupon-list-item .wc-block-components-chip",
+    ".wc-block-checkout__sidebar .wc-block-components-totals-discount .wc-block-components-chip__text",
+    ".wc-block-checkout__sidebar .wc-block-components-totals-discount .wc-block-components-chip",
+  ];
   const CONTACT_EMAIL_INPUT_SELECTOR =
     '.wc-block-checkout__contact-fields .wc-block-components-text-input input[type="email"]';
   const CONTACT_EMAIL_LABEL_SELECTOR =
@@ -75,6 +81,8 @@
   let orderSummaryObserver = null;
   let observedOrderSummary = null;
   let orderSummaryObserverTimer = null;
+  let discountSummaryTimer = null;
+  let discountSummaryRequest = null;
 
   function getCheckoutStore() {
     return window.wp?.data?.select?.(CHECKOUT_STORE_KEY) || null;
@@ -1167,6 +1175,73 @@
     }
   }
 
+  function replaceDiscountChipLabel() {
+    const summary = config.discountSummary || {};
+    const desiredLabel = String(summary.chip_label || "").trim();
+    const virtualCouponLabel = String(
+      config.virtualCouponLabel || "Discount",
+    ).trim();
+
+    if (!desiredLabel) {
+      return;
+    }
+
+    const normalizedVirtualCouponLabel = normalizeText(virtualCouponLabel);
+
+    DISCOUNT_CHIP_SELECTORS.forEach((selector) => {
+      document.querySelectorAll(selector).forEach((element) => {
+        if (normalizeText(element.textContent) !== normalizedVirtualCouponLabel) {
+          return;
+        }
+
+        element.textContent = desiredLabel;
+      });
+    });
+  }
+
+  function requestDiscountSummaryRefresh() {
+    if (!window.devhubConfig?.ajaxUrl || discountSummaryRequest) {
+      return;
+    }
+
+    const payload = new window.URLSearchParams({
+      action: "devhub_cart_discount_summary",
+    });
+
+    discountSummaryRequest = window
+      .fetch(window.devhubConfig.ajaxUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+        },
+        credentials: "same-origin",
+        body: payload.toString(),
+      })
+      .then((response) => response.json())
+      .then((result) => {
+        if (!result || !result.success || !result.data) {
+          return;
+        }
+
+        config.discountSummary = result.data.discountSummary || {};
+        config.virtualCouponLabel =
+          result.data.virtualCouponLabel || config.virtualCouponLabel;
+        replaceDiscountChipLabel();
+      })
+      .catch(() => null)
+      .finally(() => {
+        discountSummaryRequest = null;
+      });
+  }
+
+  function scheduleDiscountSummaryRefresh() {
+    window.clearTimeout(discountSummaryTimer);
+    discountSummaryTimer = window.setTimeout(
+      requestDiscountSummaryRefresh,
+      180,
+    );
+  }
+
   function enhanceContactInput() {
     const input = document.querySelector(CONTACT_EMAIL_INPUT_SELECTOR);
     const label = document.querySelector(CONTACT_EMAIL_LABEL_SELECTOR);
@@ -1643,6 +1718,7 @@
       syncOrderSummaryDeliveryLabel(method, pickupStore);
       syncBillingTitleForPickup(method);
       enhanceOrderSummaryRemoveButtons();
+      replaceDiscountChipLabel();
       moveSidebarSummaryForMobile();
       observeOrderSummary();
       enhanceProductNameTooltips();
@@ -1658,6 +1734,8 @@
     enhanceCouponButton();
     enhanceEmptyCheckoutButton();
     enhanceCouponInput();
+    replaceDiscountChipLabel();
+    scheduleDiscountSummaryRefresh();
     enhanceContactInput();
     enhanceOrderSummaryRemoveButtons();
     expandAddressLineTwo();
@@ -1807,6 +1885,8 @@
     enhancePlaceOrderButton();
     enhanceCouponButton();
     enhanceCouponInput();
+    replaceDiscountChipLabel();
+    scheduleDiscountSummaryRefresh();
     enhanceContactInput();
     enhanceOrderSummaryRemoveButtons();
     expandAddressLineTwo();
@@ -1854,6 +1934,8 @@
       enhanceCouponButton();
       enhanceEmptyCheckoutButton();
       enhanceCouponInput();
+      replaceDiscountChipLabel();
+      scheduleDiscountSummaryRefresh();
       enhanceContactInput();
       enhanceOrderSummaryRemoveButtons();
       expandAddressLineTwo();

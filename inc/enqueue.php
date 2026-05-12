@@ -296,6 +296,10 @@ function devhub_enqueue_scripts(): void
     // ── Cart ──────────────────────────────────────────────────────────────────
     if (devhub_is_cart_page()) {
         devhub_script('devhub-cart', '/modules/cart.js', ['jquery', 'wc-cart-fragments', 'devhub-utils'], true);
+        wp_localize_script('devhub-cart', 'devhubCartData', [
+            'discountSummary' => function_exists('devhub_get_cart_discount_summary_data') ? devhub_get_cart_discount_summary_data() : [],
+            'virtualCouponLabel' => html_entity_decode((string) (get_option('awdp_fee_label') ?: 'Discount'), ENT_QUOTES, get_bloginfo('charset')),
+        ]);
     }
 
     // ── Checkout ──────────────────────────────────────────────────────────────
@@ -308,6 +312,8 @@ function devhub_enqueue_scripts(): void
         wp_localize_script('devhub-checkout', 'devhubCheckoutData', [
             'accountEmail' => is_user_logged_in() ? wp_get_current_user()->user_email : '',
             'billingEmail' => WC()->customer ? WC()->customer->get_billing_email() : '',
+            'discountSummary' => function_exists('devhub_get_cart_discount_summary_data') ? devhub_get_cart_discount_summary_data() : [],
+            'virtualCouponLabel' => html_entity_decode((string) (get_option('awdp_fee_label') ?: 'Discount'), ENT_QUOTES, get_bloginfo('charset')),
             'fields' => [
                 'deliveryMethod' => defined('DEVHUB_CHECKOUT_DELIVERY_METHOD_FIELD') ? DEVHUB_CHECKOUT_DELIVERY_METHOD_FIELD : 'devicehub/delivery_method',
                 'pickupStore'    => defined('DEVHUB_CHECKOUT_PICKUP_STORE_FIELD') ? DEVHUB_CHECKOUT_PICKUP_STORE_FIELD : 'devicehub/pickup_store',

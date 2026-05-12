@@ -228,6 +228,9 @@ $has_features_tab = !empty($features_sections);
 $has_specs_tab = !empty($quick_stats) || !empty($specs) || !empty($physical_specs);
 $features_is_active = $has_features_tab;
 $specs_is_active = !$has_features_tab && $has_specs_tab;
+$pricing_offer = function_exists('devhub_get_product_pricing_offer_data')
+    ? devhub_get_product_pricing_offer_data($product)
+    : [];
 
 // ── 2. Markup ─────────────────────────────────────────────────────────────────
 ?>
@@ -248,6 +251,13 @@ $specs_is_active = !$has_features_tab && $has_specs_tab;
             <div class="devhub-single__gallery">
 
                 <div class="devhub-single__main-image">
+                    <?php if (!empty($pricing_offer)): ?>
+                        <aside class="devhub-single__offer-badge<?php echo in_array(($pricing_offer['type'] ?? ''), ['fixed_cart_amount', 'percent_total_amount'], true) ? ' devhub-single__offer-badge--cart' : ''; ?>" role="status" aria-live="polite">
+                            <span class="devhub-single__offer-badge-kicker"><?php esc_html_e("Today's Offer", 'devicehub-theme'); ?></span>
+                            <strong class="devhub-single__offer-badge-value"><?php echo esc_html($pricing_offer['badge_value']); ?></strong>
+                            <span class="devhub-single__offer-badge-caption"><?php echo esc_html($pricing_offer['badge_caption']); ?></span>
+                        </aside>
+                    <?php endif; ?>
                     <img src="<?php echo esc_url($main_img); ?>"
                         alt="<?php echo esc_attr($default_gallery[0]['alt']); ?>"
                         data-full-src="<?php echo esc_url($default_gallery[0]['full_src'] ?? $main_img); ?>"
@@ -314,9 +324,11 @@ $specs_is_active = !$has_features_tab && $has_specs_tab;
             <!-- ── Info (right) ────────────────────────────────────────────── -->
             <div class="devhub-single__info">
 
-                <h1 class="devhub-single__title">
-                    <?php echo esc_html($product->get_name()); ?>
-                </h1>
+                <div class="devhub-single__heading-row">
+                    <h1 class="devhub-single__title">
+                        <?php echo esc_html($product->get_name()); ?>
+                    </h1>
+                </div>
 
                 <?php
                 $is_price_range = $product->is_type('variable')
@@ -463,6 +475,9 @@ $specs_is_active = !$has_features_tab && $has_specs_tab;
                         <input type="hidden" name="<?php echo esc_attr($bundle_input_name); ?>"
                             id="devhubBundlePackageId" value="<?php echo esc_attr((string) $bundle_default_id); ?>">
                     <?php endif; ?>
+                    <div class="devhub-single__pricing-table-slot">
+                        <?php do_action('woocommerce_before_add_to_cart_button'); ?>
+                    </div>
 
                     <div class="devhub-single__actions">
                         <div class="devhub-single__quantity" data-devhub-quantity>
@@ -484,6 +499,8 @@ $specs_is_active = !$has_features_tab && $has_specs_tab;
                             <?php esc_html_e('Buy Now', 'devicehub-theme'); ?>
                         </button>
                     </div>
+
+                    <?php do_action('woocommerce_after_add_to_cart_button'); ?>
 
                 </form>
 

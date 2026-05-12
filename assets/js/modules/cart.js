@@ -5,6 +5,19 @@
 	const COUPON_INPUT_SELECTOR = '.wc-block-cart__sidebar .wc-block-components-totals-coupon__input input';
 	const CHECKOUT_BUTTON_SELECTOR = '.wc-block-cart__submit-button.wc-block-components-button';
 	const PRODUCT_CARD_BUTTON_SELECTOR = '.wc-block-cart .wc-block-components-product-button__button.add_to_cart_button';
+	const DISCOUNT_CHIP_SELECTORS = [
+		'.wc-block-cart__sidebar .wc-block-components-totals-discount__coupon-list-item .wc-block-components-chip__text',
+		'.wc-block-cart__sidebar .wc-block-components-totals-discount__coupon-list-item .wc-block-components-chip',
+		'.wc-block-cart__sidebar .wc-block-components-totals-discount .wc-block-components-chip__text',
+		'.wc-block-cart__sidebar .wc-block-components-totals-discount .wc-block-components-chip',
+	];
+
+	function normalizeText( value ) {
+		return String( value || '' ).trim().replace( /\s+/g, ' ' ).toLowerCase();
+	}
+
+	let discountSummaryTimer = null;
+	let discountSummaryRequest = null;
 
 	function bindEffectSixButton( button ) {
 		if ( ! button || button.dataset.devhubEffectSixBound === 'true' ) {
@@ -113,13 +126,85 @@
 		} );
 	}
 
+	function replaceDiscountChipLabel() {
+		const summary = window.devhubCartData?.discountSummary || {};
+		const desiredLabel = String( summary.chip_label || '' ).trim();
+		const virtualCouponLabel = String( window.devhubCartData?.virtualCouponLabel || 'Discount' ).trim();
+
+		if ( ! desiredLabel ) {
+			return;
+		}
+
+		const normalizedVirtualCouponLabel = normalizeText( virtualCouponLabel );
+
+		DISCOUNT_CHIP_SELECTORS.forEach( ( selector ) => {
+			document.querySelectorAll( selector ).forEach( ( element ) => {
+				const currentLabel = normalizeText( element.textContent );
+
+				if ( currentLabel !== normalizedVirtualCouponLabel ) {
+					return;
+				}
+
+				element.textContent = desiredLabel;
+			} );
+		} );
+	}
+
+	function requestDiscountSummaryRefresh() {
+		if ( ! window.devhubConfig?.ajaxUrl ) {
+			return;
+		}
+
+		if ( discountSummaryRequest ) {
+			return;
+		}
+
+		var payload = new window.URLSearchParams( { action: 'devhub_cart_discount_summary' } );
+
+		discountSummaryRequest = window.fetch( window.devhubConfig.ajaxUrl, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+			},
+			credentials: 'same-origin',
+			body: payload.toString(),
+		} )
+			.then( function ( response ) {
+				return response.json();
+			} )
+			.then( function ( result ) {
+				if ( ! result || ! result.success || ! result.data ) {
+					return;
+				}
+
+				window.devhubCartData = window.devhubCartData || {};
+				window.devhubCartData.discountSummary = result.data.discountSummary || {};
+				window.devhubCartData.virtualCouponLabel = result.data.virtualCouponLabel || window.devhubCartData.virtualCouponLabel;
+				replaceDiscountChipLabel();
+			} )
+			.catch( function () {
+				return null;
+			} )
+			.finally( function () {
+				discountSummaryRequest = null;
+			} );
+	}
+
+	function scheduleDiscountSummaryRefresh() {
+		window.clearTimeout( discountSummaryTimer );
+		discountSummaryTimer = window.setTimeout( requestDiscountSummaryRefresh, 180 );
+	}
+
 	function scheduleEnhance() {
 		window.setTimeout( enhanceCouponButton, 0 );
 		window.setTimeout( enhanceCheckoutButton, 0 );
 		window.setTimeout( enhanceProductCardButtons, 0 );
+		window.setTimeout( replaceDiscountChipLabel, 0 );
 		window.setTimeout( enhanceCouponButton, 120 );
 		window.setTimeout( enhanceCheckoutButton, 120 );
 		window.setTimeout( enhanceProductCardButtons, 120 );
+		window.setTimeout( replaceDiscountChipLabel, 120 );
+		scheduleDiscountSummaryRefresh();
 	}
 
 	function initHeaderCartFragmentBridge() {
@@ -157,14 +242,35 @@
 		} );
 	}
 
+	function initCartSidebarObserver() {
+		const sidebar = document.querySelector( '.wc-block-cart__sidebar' );
+
+		if ( ! sidebar || sidebar.dataset.devhubObserverBound === 'true' ) {
+			return;
+		}
+
+		sidebar.dataset.devhubObserverBound = 'true';
+
+		const observer = new MutationObserver( () => {
+			scheduleEnhance();
+		} );
+
+		observer.observe( sidebar, {
+			childList: true,
+			subtree: true,
+		} );
+	}
+
 	if ( document.readyState === 'loading' ) {
 		document.addEventListener( 'DOMContentLoaded', () => {
 			scheduleEnhance();
 			initHeaderCartFragmentBridge();
+			initCartSidebarObserver();
 		} );
 	} else {
 		scheduleEnhance();
 		initHeaderCartFragmentBridge();
+		initCartSidebarObserver();
 	}
 
 	document.addEventListener( 'click', ( event ) => {

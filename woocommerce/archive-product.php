@@ -29,6 +29,23 @@ function devhub_get_selected_archive_category_slugs(): array
     return [];
 }
 
+function devhub_get_selected_archive_tag_slugs(): array
+{
+    $raw = sanitize_text_field(wp_unslash($_GET['filter_product_tag'] ?? ''));
+
+    if ($raw !== '') {
+        return array_values(array_unique(array_filter(array_map('sanitize_title', explode(',', $raw)))));
+    }
+
+    $current_tag = is_product_tag() ? get_queried_object() : null;
+
+    if ($current_tag instanceof WP_Term) {
+        return [$current_tag->slug];
+    }
+
+    return [];
+}
+
 function devhub_get_archive_filter_shop_url(): string
 {
     $query_args = [];
@@ -56,7 +73,7 @@ function devhub_archive_category_group(): void
 {
     // Slugs that are utility/internal categories, not browsable sections.
     // Add to this list whenever you create a category that shouldn't appear in the filter.
-    $excluded_slugs = ['new-arrivals', 'test'];
+    $excluded_slugs = ['test'];
 
     $terms = get_terms([
         'taxonomy' => 'product_cat',
@@ -226,6 +243,16 @@ function devhub_get_archive_scope_product_ids(): array
         }
     }
 
+    $selected_tags = devhub_get_selected_archive_tag_slugs();
+    if (!empty($selected_tags)) {
+        $tax_query[] = [
+            'taxonomy' => 'product_tag',
+            'field' => 'slug',
+            'terms' => $selected_tags,
+            'operator' => 'IN',
+        ];
+    }
+
     $query = new WP_Query([
         'post_type' => 'product',
         'post_status' => 'publish',
@@ -355,6 +382,49 @@ function devhub_archive_brand_filter_group(): void
     </div>
     <?php
 }
+
+function devhub_archive_tag_filter_group(): void
+{
+    $tag_terms = devhub_get_scoped_archive_terms('product_tag');
+
+    if (empty($tag_terms)) {
+        return;
+    }
+
+    $raw = sanitize_text_field(wp_unslash($_GET['filter_product_tag'] ?? ''));
+    $active = $raw !== '' ? array_filter(array_map('sanitize_title', explode(',', $raw))) : [];
+    ?>
+    <div class="devhub-filter-group">
+        <button class="devhub-filter-group__toggle" type="button" aria-expanded="true">
+            Tags
+            <i class="fas fa-chevron-up" aria-hidden="true"></i>
+        </button>
+        <ul class="devhub-filter-group__list">
+            <?php foreach ($tag_terms as $term):
+                $is_active = in_array($term['slug'], $active, true);
+                $new_vals = $is_active
+                    ? array_values(array_diff($active, [$term['slug']]))
+                    : array_merge($active, [$term['slug']]);
+                $base = remove_query_arg('paged');
+                $href = $new_vals
+                    ? add_query_arg('filter_product_tag', implode(',', $new_vals), $base)
+                    : remove_query_arg('filter_product_tag', $base);
+                ?>
+                <li>
+                    <a href="<?php echo esc_url($href); ?>"
+                        class="devhub-filter-option<?php echo $is_active ? ' devhub-filter-option--active' : ''; ?>">
+                        <span class="devhub-filter-option__check" aria-hidden="true">
+                            <?php if ($is_active): ?><i class="fas fa-check"></i><?php endif; ?>
+                        </span>
+                        <span class="devhub-filter-option__name"><?php echo esc_html($term['name']); ?></span>
+                        <span class="devhub-filter-option__count"><?php echo esc_html((string) $term['count']); ?></span>
+                    </a>
+                </li>
+            <?php endforeach; ?>
+        </ul>
+    </div>
+    <?php
+}
 ?>
 
 <div class="devhub-archive">
@@ -378,6 +448,9 @@ function devhub_archive_brand_filter_group(): void
 
                     <!-- Brand (always shown — applies to all categories) -->
                     <?php devhub_archive_brand_filter_group(); ?>
+
+                    <!-- Tags -->
+                    <?php devhub_archive_tag_filter_group(); ?>
 
                     <!-- Category-specific attribute filters -->
                     <?php

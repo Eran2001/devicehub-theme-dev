@@ -1046,6 +1046,51 @@
   #wf_header .site--close:focus:after {
     transform: translate(-50%, -50%) rotate(-45deg);
   }
+
+  #wf_header .devhub-mobile-secondary-nav {
+    border-top: 1px solid var(--devhub-border);
+  }
+
+  #wf_header .devhub-mobile-secondary-nav__list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  #wf_header .devhub-mobile-secondary-nav__list > li {
+    margin: 0;
+    border-top: 1px solid rgba(228, 231, 236, 0.45);
+  }
+
+  #wf_header .devhub-mobile-secondary-nav__list > li > a {
+    display: flex;
+    align-items: center;
+    min-height: 42px;
+    padding: 4px 12px;
+    color: var(--devhub-dark);
+    font-size: 14.96px;
+    font-weight: 700;
+    line-height: 1.35;
+    text-decoration: none;
+    transition:
+      background-color 0.22s ease,
+      color 0.22s ease;
+  }
+
+  #wf_header .devhub-mobile-secondary-nav__list > li > a:hover,
+  #wf_header .devhub-mobile-secondary-nav__list > li > a:focus-visible {
+    color: var(--devhub-primary);
+    background: rgba(255, 102, 0, 0.08);
+  }
+
+  #wf_header .devhub-mobile-secondary-nav__list--brands {
+    columns: 2;
+    column-gap: 0;
+  }
+
+  #wf_header .devhub-mobile-secondary-nav__list--brands > li {
+    break-inside: avoid;
+  }
 }
 
 @media (max-width: 575px) {
