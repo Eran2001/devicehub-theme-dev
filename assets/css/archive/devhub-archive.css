@@ -569,17 +569,17 @@ body.tax-pa_brand .devhub-archive__grid .devhub-product-card__bundle::before {
 
 @media (hover: hover) and (pointer: fine) {
   body.post-type-archive-product .devhub-archive__grid .devhub-product-card__action {
-    top: 67%;
+    top: 65%;
   }
 
   body.tax-product_cat .devhub-archive__grid .devhub-product-card__action {
-    top: 67%;
+    top: 65%;
   }
 
   body.tax-pwb-brand .devhub-archive__grid .devhub-product-card__action,
   body.tax-product_brand .devhub-archive__grid .devhub-product-card__action,
   body.tax-pa_brand .devhub-archive__grid .devhub-product-card__action {
-    top: 67%;
+    top: 65%;
   }
 }
 
