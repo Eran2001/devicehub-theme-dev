@@ -77,6 +77,25 @@ function devhub_has_catalog_data(): bool
     return devhub_has_woocommerce() && post_type_exists('product') && taxonomy_exists('product_cat') && function_exists('wc_get_product');
 }
 
+function devhub_get_product_category_display_name($category): string
+{
+    if ($category instanceof WP_Term) {
+        $slug = $category->slug;
+        $name = $category->name;
+    } elseif (is_string($category)) {
+        $slug = sanitize_title($category);
+        $name = $category;
+    } else {
+        return '';
+    }
+
+    if ($slug === 'uncategorized') {
+        return 'Featured Products';
+    }
+
+    return (string) $name;
+}
+
 
 // ── Product helpers ───────────────────────────────────────────────────────────
 

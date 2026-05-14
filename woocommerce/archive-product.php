@@ -81,7 +81,6 @@ function devhub_archive_category_group(): void
         'parent' => 0,
         'orderby' => 'menu_order',
         'order' => 'ASC',
-        'exclude' => [get_option('default_product_cat')],
     ]);
 
     if (empty($terms) || is_wp_error($terms)) {
@@ -115,6 +114,7 @@ function devhub_archive_category_group(): void
             </li>
             <?php foreach ($terms as $term):
                 $is_active = in_array($term->slug, $active_slugs, true);
+                $term_name = devhub_get_product_category_display_name($term);
                 $new_slugs = $is_active
                     ? array_values(array_diff($active_slugs, [$term->slug]))
                     : array_values(array_unique(array_merge($active_slugs, [$term->slug])));
@@ -128,7 +128,7 @@ function devhub_archive_category_group(): void
                         <span class="devhub-filter-option__check" aria-hidden="true">
                             <?php if ($is_active): ?><i class="fas fa-check"></i><?php endif; ?>
                         </span>
-                        <span class="devhub-filter-option__name"><?php echo esc_html($term->name); ?></span>
+                        <span class="devhub-filter-option__name"><?php echo esc_html($term_name); ?></span>
                         <span class="devhub-filter-option__count"><?php echo esc_html($term->count); ?></span>
                     </a>
                 </li>

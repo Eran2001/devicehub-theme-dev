@@ -97,9 +97,30 @@ function devhub_render_page_bar(): void
 
 add_filter('woocommerce_page_title', function ($title) {
     if (is_product_category()) {
-        return single_cat_title('', false);
+        $term = get_queried_object();
+        if ($term instanceof WP_Term) {
+            return devhub_get_product_category_display_name($term);
+        }
     }
     return $title;
+});
+
+add_filter('woocommerce_get_breadcrumb', function ($crumbs) {
+    if (is_admin() || empty($crumbs) || !is_array($crumbs)) {
+        return $crumbs;
+    }
+
+    foreach ($crumbs as &$crumb) {
+        if (!isset($crumb[0]) || !is_string($crumb[0])) {
+            continue;
+        }
+
+        if ($crumb[0] === 'Uncategorized') {
+            $crumb[0] = devhub_get_product_category_display_name('uncategorized');
+        }
+    }
+
+    return $crumbs;
 });
 
 
@@ -435,7 +456,7 @@ function devhub_get_header_search_categories(string $term): array
         }
 
         $categories[] = [
-            'name' => html_entity_decode($category->name, ENT_QUOTES, get_bloginfo('charset')),
+            'name' => html_entity_decode(devhub_get_product_category_display_name($category), ENT_QUOTES, get_bloginfo('charset')),
             'url' => esc_url_raw($link),
         ];
     }
@@ -695,7 +716,6 @@ function devhub_get_secondary_categories(): array
         'taxonomy' => 'product_cat',
         'hide_empty' => false,
         'parent' => 0,
-        'exclude' => get_option('default_product_cat'),
         'orderby' => 'menu_order',
         'order' => 'ASC',
     ]);
@@ -2132,6 +2152,7 @@ function devhub_render_secondary_nav(): void
                         <ul class="devhub-secondary-nav__cat-list<?php echo esc_attr($category_list_class); ?>">
                             <?php foreach ($categories as $category):
                                 $visual = devhub_get_secondary_category_visual($category);
+                                $category_name = devhub_get_product_category_display_name($category);
                                 $child_categories = get_terms([
                                     'taxonomy' => 'product_cat',
                                     'hide_empty' => false,
@@ -2150,17 +2171,19 @@ function devhub_render_secondary_nav(): void
                                             <?php endif; ?>
                                             <i class="<?php echo esc_attr($visual['icon'] . ($visual['image'] !== '' ? ' devhub-secondary-nav__fallback-icon--hidden' : '')); ?>"></i>
                                         </span>
-                                        <span><?php echo esc_html($category->name); ?></span>
+                                        <span><?php echo esc_html($category_name); ?></span>
                                         <?php if ($has_child_categories): ?>
                                             <i class="fas fa-chevron-right devhub-secondary-nav__cat-arrow" aria-hidden="true"></i>
                                         <?php endif; ?>
                                     </a>
                                     <?php if ($has_child_categories): ?>
                                         <ul class="devhub-secondary-nav__cat-children">
-                                            <?php foreach ($child_categories as $child_category): ?>
+                                            <?php foreach ($child_categories as $child_category):
+                                                $child_category_name = devhub_get_product_category_display_name($child_category);
+                                                ?>
                                                 <li>
                                                     <a href="<?php echo esc_url(get_term_link($child_category)); ?>">
-                                                        <?php echo esc_html($child_category->name); ?>
+                                                        <?php echo esc_html($child_category_name); ?>
                                                     </a>
                                                 </li>
                                             <?php endforeach; ?>
@@ -2952,7 +2975,7 @@ function devhub_terms_block_inject_pp_link(string $block_content): string
 }
 
 
-// ── Mobile drawer categories — exclude "Uncategorized" ───────────────────────
+// ── Mobile drawer categories ──────────────────────────────────────────────────
 // Must defer removal: child functions.php loads before parent's, so the parent's
 // add_action hasn't run yet when hooks.php is first included.
 
@@ -2972,7 +2995,6 @@ function devhub_mobile_drawer_categories(): void
         'taxonomy' => 'product_cat',
         'hide_empty' => false,
         'parent' => 0,
-        'exclude' => get_term_by('slug', 'uncategorized', 'product_cat')->term_id ?? 0,
         'orderby' => 'menu_order',
         'order' => 'ASC',
     ]);
@@ -2992,13 +3014,15 @@ function devhub_mobile_drawer_categories(): void
         ]);
         $icon = get_term_meta($cat->term_id, 'shopire_product_cat_icon', true);
         $icon_html = $icon ? "<i class='" . esc_attr($icon) . " wf-mr-2'></i>" : '';
-        $link = '<a title="' . esc_attr($cat->name) . '" href="' . esc_url(get_term_link($cat->term_id)) . '" class="nav-link">' . $icon_html . esc_html($cat->name) . '</a>';
+        $cat_name = devhub_get_product_category_display_name($cat);
+        $link = '<a title="' . esc_attr($cat_name) . '" href="' . esc_url(get_term_link($cat->term_id)) . '" class="nav-link">' . $icon_html . esc_html($cat_name) . '</a>';
 
         if (!empty($child_cats) && !is_wp_error($child_cats)) {
             echo '<li class="menu-item menu-item-has-children" style="display:list-item;">' . $link;
             echo '<ul class="dropdown-menu">';
             foreach ($child_cats as $child) {
-                echo '<li class="menu-item" style="display:list-item;"><a title="' . esc_attr($child->name) . '" href="' . esc_url(get_term_link($child->term_id)) . '" class="dropdown-item">' . esc_html($child->name) . '</a></li>';
+                $child_name = devhub_get_product_category_display_name($child);
+                echo '<li class="menu-item" style="display:list-item;"><a title="' . esc_attr($child_name) . '" href="' . esc_url(get_term_link($child->term_id)) . '" class="dropdown-item">' . esc_html($child_name) . '</a></li>';
             }
             echo '</ul></li>';
         } else {

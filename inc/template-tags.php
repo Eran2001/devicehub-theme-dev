@@ -781,6 +781,9 @@ function shopire_header_bcat_base() {
 			  );
 			$product_cat = get_terms( $categories );
 			foreach ($product_cat as $parent_product_cat) {
+				$parent_product_cat_name = function_exists('devhub_get_product_category_display_name')
+					? devhub_get_product_category_display_name($parent_product_cat)
+					: $parent_product_cat->name;
 				$child_args = array(
 					'taxonomy' => 'product_cat',
 					'hide_empty' => false,
@@ -791,14 +794,17 @@ function shopire_header_bcat_base() {
 				$child_product_cats = get_terms( $child_args );
 				$shopire_product_cat_icon = get_term_meta($parent_product_cat->term_id, 'shopire_product_cat_icon', true);
 				if ( ! empty($child_product_cats) ) {
-					echo '<li class="menu-item menu-item-has-children" style="display: list-item;"><a title="'.esc_attr($parent_product_cat->name).'" href="'.esc_url(get_term_link($parent_product_cat->term_id)).'" class="nav-link">'.(!empty($shopire_product_cat_icon) ? "<i class='{$shopire_product_cat_icon} wf-mr-2'></i>":'').' '. esc_html($parent_product_cat->name).'</a>';
+					echo '<li class="menu-item menu-item-has-children" style="display: list-item;"><a title="'.esc_attr($parent_product_cat_name).'" href="'.esc_url(get_term_link($parent_product_cat->term_id)).'" class="nav-link">'.(!empty($shopire_product_cat_icon) ? "<i class='{$shopire_product_cat_icon} wf-mr-2'></i>":'').' '. esc_html($parent_product_cat_name).'</a>';
 				} else {
-					echo '<li class="menu-item" style="display: list-item;"><a title="'.esc_attr($parent_product_cat->name).'" href="'.esc_url(get_term_link($parent_product_cat->term_id)).'" class="nav-link">'.(!empty($shopire_product_cat_icon) ? "<i class='{$shopire_product_cat_icon} wf-mr-2'></i>":'').' '. esc_html($parent_product_cat->name).'</a>';
+					echo '<li class="menu-item" style="display: list-item;"><a title="'.esc_attr($parent_product_cat_name).'" href="'.esc_url(get_term_link($parent_product_cat->term_id)).'" class="nav-link">'.(!empty($shopire_product_cat_icon) ? "<i class='{$shopire_product_cat_icon} wf-mr-2'></i>":'').' '. esc_html($parent_product_cat_name).'</a>';
 				}
 				if ( ! empty($child_product_cats) ) {
 					echo '<ul class="dropdown-menu">';
 					foreach ($child_product_cats as $child_product_cat) {
-					echo '<li class="menu-item" style="display: list-item;"><a title="'.esc_attr($parent_product_cat->name).'" href="'.esc_url(get_term_link($child_product_cat->term_id)).'" class="dropdown-item">'.esc_html($child_product_cat->name).'</a></li>';
+					$child_product_cat_name = function_exists('devhub_get_product_category_display_name')
+						? devhub_get_product_category_display_name($child_product_cat)
+						: $child_product_cat->name;
+					echo '<li class="menu-item" style="display: list-item;"><a title="'.esc_attr($child_product_cat_name).'" href="'.esc_url(get_term_link($child_product_cat->term_id)).'" class="dropdown-item">'.esc_html($child_product_cat_name).'</a></li>';
 					} echo '</ul>';
 				} echo '</li>';
 			} 

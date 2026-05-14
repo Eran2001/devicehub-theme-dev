@@ -69,13 +69,8 @@ function devhub_get_promo_banner_categories(): array
     }
 
     $excluded_ids = [];
-    $default_product_cat = (int) get_option('default_product_cat');
 
-    if ($default_product_cat > 0) {
-        $excluded_ids[] = $default_product_cat;
-    }
-
-    foreach (['uncategorized', 'flash-sale'] as $slug) {
+    foreach (['flash-sale'] as $slug) {
         $term = get_term_by('slug', $slug, 'product_cat');
 
         if ($term instanceof WP_Term) {

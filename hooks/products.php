@@ -218,7 +218,7 @@ function devhub_render_home_product_sections(): void
         }
 
         devhub_render_product_section(
-            $category->name,
+            devhub_get_product_category_display_name($category),
             $section_id,
             $category->slug,
             DEVHUB_URI . '/assets/images/Original-Img.svg',
@@ -229,7 +229,7 @@ function devhub_render_home_product_sections(): void
             devhub_get_promo_banner_category_placement($category),
             sprintf(
                 __('Promo banner after %s', 'devicehub-theme'),
-                $category->name
+                devhub_get_product_category_display_name($category)
             )
         );
     }
