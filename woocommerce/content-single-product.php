@@ -22,6 +22,9 @@ $product = wc_get_product(get_the_ID());
 if (!$product)
     return;
 
+$stock_state = devhub_get_product_stock_state($product);
+$stock_text = devhub_get_product_stock_text($product);
+
 // ── 1. Data ───────────────────────────────────────────────────────────────────
 
 $is_variable = $product->is_type('variable');
@@ -74,12 +77,16 @@ usort($storages, static function ($a, $b) use ($storage_capacity_rank) {
 $available_variations = '[]';
 if ($is_variable) {
     $raw = array_map(function ($v) use ($product) {
+        $variation_product = wc_get_product($v['variation_id']);
+
         return [
             'id' => $v['variation_id'],
             'attributes' => $v['attributes'],
             'price' => $v['display_price'],
             'price_html' => $v['price_html'] ?? wc_price((float) $v['display_price']),
             'in_stock' => $v['is_in_stock'],
+            'stock_state' => $variation_product instanceof WC_Product ? devhub_get_product_stock_state($variation_product) : ($v['is_in_stock'] ? 'in' : 'out'),
+            'stock_text' => $variation_product instanceof WC_Product ? devhub_get_product_stock_text($variation_product) : ($v['is_in_stock'] ? __('In stock', 'devicehub-theme') : __('Out of stock', 'devicehub-theme')),
             'gallery_images' => devhub_get_variation_gallery_data($v, $product->get_name(), ''),
         ];
     }, $product->get_available_variations());
@@ -339,11 +346,9 @@ $pricing_offer = function_exists('devhub_get_product_pricing_offer_data')
                         <?php echo $product->get_price_html(); // phpcs:ignore WordPress.Security.EscapeOutput ?>
                     </div>
                     <span
-                        class="devhub-single__stock devhub-single__stock--<?php echo $product->is_in_stock() ? 'in' : 'out'; ?>">
+                        class="devhub-single__stock devhub-single__stock--<?php echo esc_attr($stock_state); ?>">
                         <span class="devhub-single__stock-dot" aria-hidden="true"></span>
-                        <?php echo $product->is_in_stock()
-                            ? esc_html__('In stock', 'devicehub-theme')
-                            : esc_html__('Out of stock', 'devicehub-theme'); ?>
+                        <?php echo esc_html($stock_text); ?>
                     </span>
                 </div>
 

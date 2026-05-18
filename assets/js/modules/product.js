@@ -1181,10 +1181,12 @@
       }
       if (stockBox) {
         stockBox.classList.remove("devhub-single__stock--in", "devhub-single__stock--out");
-        stockBox.classList.add(match.in_stock ? "devhub-single__stock--in" : "devhub-single__stock--out");
+        stockBox.classList.add(
+          match.stock_state === "out" ? "devhub-single__stock--out" : "devhub-single__stock--in"
+        );
         stockBox.innerHTML =
           '<span class="devhub-single__stock-dot" aria-hidden="true"></span>' +
-          (match.in_stock ? "In stock" : "Out of stock");
+          (match.stock_text || (match.in_stock ? "In stock" : "Out of stock"));
       }
       if (galleryController) {
         if (Array.isArray(match.gallery_images) && match.gallery_images.length) {
