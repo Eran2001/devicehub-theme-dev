@@ -7,6 +7,7 @@
     ? config.pickupLocations
     : [];
   const messages = config.messages || {};
+  const paymentVisuals = config.paymentVisuals || {};
 
   const DELIVERY_FIELD = fields.deliveryMethod || "devicehub/delivery_method";
   const PICKUP_FIELD = fields.pickupStore || "devicehub/pickup_store";
@@ -81,6 +82,8 @@
   let orderSummaryObserver = null;
   let observedOrderSummary = null;
   let orderSummaryObserverTimer = null;
+  let paymentMethodsObserver = null;
+  let observedPaymentStep = null;
   let discountSummaryTimer = null;
   let discountSummaryRequest = null;
 
@@ -1714,6 +1717,161 @@
     }
   }
 
+  function getPaymentMethodMeta(text) {
+    const normalized = normalizeText(text);
+    const methods = paymentVisuals.methods || {};
+
+    if (
+      normalized.includes("pay with card") ||
+      normalized.includes("sampath") ||
+      normalized.includes("paycorp")
+    ) {
+      return {
+        key: "card",
+        label: methods.card?.label || "",
+        description: methods.card?.description || "",
+        images: Array.isArray(methods.card?.images)
+          ? methods.card.images
+          : methods.card?.image
+            ? [methods.card.image]
+            : [],
+      };
+    }
+
+    if (normalized.includes("cash on delivery")) {
+      return {
+        key: "cod",
+        label: methods.cod?.label || "",
+        description: methods.cod?.description || "",
+        images: Array.isArray(methods.cod?.images)
+          ? methods.cod.images
+          : methods.cod?.image
+            ? [methods.cod.image]
+            : [],
+      };
+    }
+
+    return null;
+  }
+
+  function applyPaymentMethodVisual(option, meta) {
+    if (!option || !meta) {
+      return;
+    }
+
+    option.classList.add("devhub-payment-method-card");
+    option.classList.toggle("devhub-payment-method-card--card", meta.key === "card");
+    option.classList.toggle("devhub-payment-method-card--cod", meta.key === "cod");
+
+    const label =
+      option.querySelector(".wc-block-components-radio-control__label") ||
+      option.querySelector(".wc-block-components-payment-method-label");
+    const labelGroup =
+      option.querySelector(".wc-block-components-radio-control__label-group") ||
+      label?.parentElement;
+    const description =
+      option.parentElement?.querySelector(
+        ".wc-block-components-radio-control__description, .wc-block-components-radio-control-accordion-content",
+      ) || option.querySelector(
+        ".wc-block-components-radio-control__description, .wc-block-components-radio-control-accordion-content",
+      );
+
+    if (label && meta.label) {
+      label.textContent = meta.label;
+    }
+
+    if (description && meta.description) {
+      description.textContent = meta.description;
+    }
+
+    if (labelGroup) {
+      labelGroup.classList.add("devhub-payment-method-card__label-group");
+
+      let media = labelGroup.querySelector(".devhub-payment-method-card__media");
+      if (!media) {
+        media = document.createElement("span");
+        media.className = "devhub-payment-method-card__media";
+        labelGroup.appendChild(media);
+      }
+
+      media.innerHTML = "";
+
+      (meta.images || []).forEach((src, index) => {
+        if (!src) {
+          return;
+        }
+
+        const image = document.createElement("img");
+        image.className = "devhub-payment-method-card__image";
+        image.src = src;
+        image.alt =
+          index === 0 ? meta.label : `${meta.label} option ${index + 1}`;
+        media.appendChild(image);
+      });
+    }
+  }
+
+  function enhancePaymentMethodsUi() {
+    const paymentStep = document.querySelector(PAYMENT_STEP_SELECTOR);
+    if (!paymentStep) {
+      return;
+    }
+
+    const title = paymentStep.querySelector(
+      ".wc-block-components-checkout-step__title",
+    );
+
+    if (title && paymentVisuals.heading) {
+      title.textContent = paymentVisuals.heading;
+    }
+
+    paymentStep
+      .querySelectorAll(".wc-block-components-radio-control__option")
+      .forEach((option) => {
+        const labelText =
+          option.querySelector(".wc-block-components-radio-control__label")
+            ?.textContent ||
+          option.querySelector(".wc-block-components-payment-method-label")
+            ?.textContent ||
+          option.textContent;
+        const meta = getPaymentMethodMeta(labelText);
+
+        if (!meta) {
+          return;
+        }
+
+        applyPaymentMethodVisual(option, meta);
+      });
+  }
+
+  function observePaymentMethods() {
+    const paymentStep = document.querySelector(PAYMENT_STEP_SELECTOR);
+
+    if (!paymentStep) {
+      return;
+    }
+
+    if (!paymentMethodsObserver) {
+      paymentMethodsObserver = new MutationObserver(() => {
+        window.requestAnimationFrame(() => {
+          enhancePaymentMethodsUi();
+        });
+      });
+    }
+
+    if (observedPaymentStep === paymentStep) {
+      return;
+    }
+
+    paymentMethodsObserver.disconnect();
+    observedPaymentStep = paymentStep;
+    paymentMethodsObserver.observe(paymentStep, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+    });
+  }
+
   function render() {
     syncSidebarRelocationState();
 
@@ -1747,6 +1905,8 @@
       moveSidebarSummaryForMobile();
       observeOrderSummary();
       enhanceProductNameTooltips();
+      enhancePaymentMethodsUi();
+      observePaymentMethods();
       return;
     }
 
@@ -1770,6 +1930,8 @@
     moveOrderNoteStep();
     movePaymentStep();
     moveTermsBeforePlaceOrder();
+    enhancePaymentMethodsUi();
+    observePaymentMethods();
   }
 
   function syncBillingTitleForPickup(method) {
@@ -1919,6 +2081,7 @@
     enhanceBillingEmailField();
     moveSidebarSummaryForMobile();
     observeOrderSummary();
+    observePaymentMethods();
     enhanceProductNameTooltips();
     moveOrderNoteStep();
     movePaymentStep();

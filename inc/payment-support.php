@@ -23,6 +23,7 @@ add_action( 'woocommerce_order_status_processing', 'devhub_clear_payment_retry_a
 add_action( 'woocommerce_order_status_completed', 'devhub_clear_payment_retry_attempts', 10, 1 );
 add_action( 'woocommerce_order_status_on-hold', 'devhub_clear_payment_retry_attempts', 10, 1 );
 add_action( 'before_woocommerce_pay', 'devhub_add_order_pay_retry_notice', 5 );
+add_action( 'template_redirect', 'devhub_handle_direct_payment_retry', 1 );
 
 add_filter( 'woocommerce_order_needs_payment', 'devhub_maybe_block_payment_after_retry_limit', 10, 3 );
 
@@ -96,6 +97,24 @@ function devhub_get_payment_method_display_data(): array {
 	}
 
 	return $methods;
+}
+
+/**
+ * Build a direct retry URL that can send the customer back to the gateway
+ * without first rendering WooCommerce's default order-pay page.
+ *
+ * @param WC_Order $order WooCommerce order.
+ * @return string
+ */
+function devhub_get_direct_payment_retry_url( WC_Order $order ): string {
+	return add_query_arg(
+		[
+			'devhub_retry_payment' => '1',
+			'order_id'             => (string) $order->get_id(),
+			'key'                  => (string) $order->get_order_key(),
+		],
+		$order->get_checkout_order_received_url()
+	);
 }
 
 /**
@@ -246,6 +265,77 @@ function devhub_add_order_pay_retry_notice(): void {
 		),
 		'notice'
 	);
+}
+
+/**
+ * Redirect failed-order retry requests straight back to the payment gateway
+ * when the gateway supports programmatic retries.
+ *
+ * @return void
+ */
+function devhub_handle_direct_payment_retry(): void {
+	if ( '1' !== (string) filter_input( INPUT_GET, 'devhub_retry_payment', FILTER_SANITIZE_SPECIAL_CHARS ) ) {
+		return;
+	}
+
+	if ( ! function_exists( 'wc_get_order' ) || ! function_exists( 'WC' ) ) {
+		return;
+	}
+
+	$order_id  = absint( filter_input( INPUT_GET, 'order_id', FILTER_SANITIZE_NUMBER_INT ) );
+	$order_key = (string) filter_input( INPUT_GET, 'key', FILTER_SANITIZE_SPECIAL_CHARS );
+	$order     = wc_get_order( $order_id );
+
+	if ( ! $order instanceof WC_Order ) {
+		wp_safe_redirect( wc_get_checkout_url() );
+		exit;
+	}
+
+	if ( '' === $order_key || ! hash_equals( (string) $order->get_order_key(), $order_key ) ) {
+		wp_safe_redirect( $order->get_checkout_order_received_url() );
+		exit;
+	}
+
+	if ( ! $order->needs_payment() ) {
+		wp_safe_redirect( $order->get_checkout_order_received_url() );
+		exit;
+	}
+
+	$attempts = devhub_get_payment_retry_attempts( $order->get_id() );
+
+	if ( $attempts >= DEVHUB_PAYMENT_MAX_RETRY_ATTEMPTS ) {
+		wc_add_notice(
+			sprintf(
+				/* translators: %d: retry limit */
+				__( 'This order has reached the maximum of %d payment attempts for the current session.', 'devicehub-theme' ),
+				DEVHUB_PAYMENT_MAX_RETRY_ATTEMPTS
+			),
+			'error'
+		);
+
+		wp_safe_redirect( $order->get_checkout_order_received_url() );
+		exit;
+	}
+
+	$gateway_id      = (string) $order->get_payment_method();
+	$gateway_manager = WC()->payment_gateways();
+	$gateways        = $gateway_manager ? $gateway_manager->payment_gateways() : [];
+	$gateway         = isset( $gateways[ $gateway_id ] ) ? $gateways[ $gateway_id ] : null;
+
+	if ( ! $gateway || ! method_exists( $gateway, 'process_payment' ) ) {
+		wp_safe_redirect( $order->get_checkout_payment_url() );
+		exit;
+	}
+
+	$result = $gateway->process_payment( $order->get_id() );
+
+	if ( is_array( $result ) && 'success' === ( $result['result'] ?? '' ) && ! empty( $result['redirect'] ) ) {
+		wp_redirect( $result['redirect'] );
+		exit;
+	}
+
+	wp_safe_redirect( $order->get_checkout_payment_url() );
+	exit;
 }
 
 /**

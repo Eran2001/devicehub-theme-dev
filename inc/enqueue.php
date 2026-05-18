@@ -317,6 +317,21 @@ function devhub_enqueue_scripts(): void
             'billingEmail' => WC()->customer ? WC()->customer->get_billing_email() : '',
             'discountSummary' => function_exists('devhub_get_cart_discount_summary_data') ? devhub_get_cart_discount_summary_data() : [],
             'virtualCouponLabel' => html_entity_decode((string) (get_option('awdp_fee_label') ?: 'Discount'), ENT_QUOTES, get_bloginfo('charset')),
+            'paymentVisuals' => [
+                'heading' => __('Payment Methods', 'devicehub-theme'),
+                'methods' => [
+                    'card' => [
+                        'images' => [
+                            DEVHUB_URI . '/assets/images/visa.png',
+                            DEVHUB_URI . '/assets/images/master-card.png',
+                            DEVHUB_URI . '/assets/images/amex-card.png',
+                        ],
+                    ],
+                    'cod' => [
+                        'image' => DEVHUB_URI . '/assets/images/cash-on-delivery-new.png',
+                    ],
+                ],
+            ],
             'fields' => [
                 'deliveryMethod' => defined('DEVHUB_CHECKOUT_DELIVERY_METHOD_FIELD') ? DEVHUB_CHECKOUT_DELIVERY_METHOD_FIELD : 'devicehub/delivery_method',
                 'pickupStore'    => defined('DEVHUB_CHECKOUT_PICKUP_STORE_FIELD') ? DEVHUB_CHECKOUT_PICKUP_STORE_FIELD : 'devicehub/pickup_store',

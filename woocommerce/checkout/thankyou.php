@@ -24,14 +24,27 @@ defined( 'ABSPATH' ) || exit;
 
 		<?php if ( $order->has_status( 'failed' ) ) : ?>
 
-			<p class="woocommerce-notice woocommerce-notice--error woocommerce-thankyou-order-failed"><?php esc_html_e( 'Unfortunately your order cannot be processed as the originating bank/merchant has declined your transaction. Please attempt your purchase again.', 'woocommerce' ); ?></p>
-
-			<p class="woocommerce-notice woocommerce-notice--error woocommerce-thankyou-order-failed-actions">
-				<a href="<?php echo esc_url( $order->get_checkout_payment_url() ); ?>" class="button pay"><?php esc_html_e( 'Pay', 'woocommerce' ); ?></a>
-				<?php if ( is_user_logged_in() ) : ?>
-					<a href="<?php echo esc_url( wc_get_page_permalink( 'myaccount' ) ); ?>" class="button pay"><?php esc_html_e( 'My account', 'woocommerce' ); ?></a>
-				<?php endif; ?>
-			</p>
+			<div class="devhub-order-failed-layout">
+				<div class="devhub-order-failed-hero">
+					<div class="devhub-order-failed-hero__icon" aria-hidden="true">
+						<i class="fas fa-times"></i>
+					</div>
+					<h2 class="devhub-order-failed-hero__title">
+						<?php esc_html_e( 'Payment Failed!', 'devicehub-theme' ); ?>
+					</h2>
+					<p class="devhub-order-failed-hero__alert">
+						<?php esc_html_e( 'Your card could not be authorized.', 'devicehub-theme' ); ?>
+					</p>
+					<p class="devhub-order-failed-hero__text">
+						<?php esc_html_e( "We're sorry, but it seems your payment didn't go through. Please click 'Try Again' to proceed with the payment process.", 'devicehub-theme' ); ?>
+					</p>
+					<div class="devhub-order-failed-hero__actions">
+						<a href="<?php echo esc_url( function_exists( 'devhub_get_direct_payment_retry_url' ) ? devhub_get_direct_payment_retry_url( $order ) : $order->get_checkout_payment_url() ); ?>" class="button devhub-order-failed-hero__button">
+							<?php esc_html_e( 'Try Again', 'devicehub-theme' ); ?>
+						</a>
+					</div>
+				</div>
+			</div>
 
 		<?php else : ?>
 
@@ -95,8 +108,10 @@ defined( 'ABSPATH' ) || exit;
 
 		<?php endif; ?>
 
-		<?php do_action( 'woocommerce_thankyou_' . $order->get_payment_method(), $order->get_id() ); ?>
-		<?php do_action( 'woocommerce_thankyou', $order->get_id() ); ?>
+		<?php if ( ! $order->has_status( 'failed' ) ) : ?>
+			<?php do_action( 'woocommerce_thankyou_' . $order->get_payment_method(), $order->get_id() ); ?>
+			<?php do_action( 'woocommerce_thankyou', $order->get_id() ); ?>
+		<?php endif; ?>
 
 	<?php else : ?>
 
