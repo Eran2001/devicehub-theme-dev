@@ -30,7 +30,7 @@ defined( 'ABSPATH' ) || exit;
 						<i class="fas fa-exclamation"></i>
 					</div>
 					<h2 class="devhub-order-failed-hero__title devhub-order-failed-hero__title--cancelled">
-						<?php esc_html_e( 'Payment Cancelled', 'devicehub-theme' ); ?>
+						<?php esc_html_e( 'Order Cancelled', 'devicehub-theme' ); ?>
 					</h2>
 					<p class="devhub-order-failed-hero__alert devhub-order-failed-hero__alert--cancelled">
 						<?php esc_html_e( 'We were unable to complete your payment after several attempts.', 'devicehub-theme' ); ?>
