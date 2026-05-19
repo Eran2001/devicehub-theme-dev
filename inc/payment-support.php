@@ -249,55 +249,40 @@ function devhub_clear_payment_retry_attempts( int $order_id ): void {
 }
 
 /**
- * Restore a cancelled retry-limit order back into the cart for a fresh
- * checkout attempt.
+ * Check whether an order was cancelled by the retry-limit flow.
  *
  * @param WC_Order $order WooCommerce order.
  * @return bool
  */
-function devhub_restore_order_items_to_cart( WC_Order $order ): bool {
-	if ( ! function_exists( 'WC' ) || ! WC()->cart ) {
-		return false;
-	}
-
-	$items = $order->get_items( 'line_item' );
-
-	if ( empty( $items ) ) {
-		return false;
-	}
-
-	WC()->cart->empty_cart();
-
-	$restored_any = false;
-
-	foreach ( $items as $item ) {
-		if ( ! $item instanceof WC_Order_Item_Product ) {
-			continue;
-		}
-
-		$product_id   = (int) $item->get_product_id();
-		$variation_id = (int) $item->get_variation_id();
-		$quantity     = max( 1, (int) $item->get_quantity() );
-		$variation    = [];
-
-		if ( $variation_id > 0 ) {
-			$variation_product = wc_get_product( $variation_id );
-			$variation         = $variation_product instanceof WC_Product_Variation ? $variation_product->get_variation_attributes() : [];
-		}
-
-		$cart_item_key = WC()->cart->add_to_cart( $product_id, $quantity, $variation_id, $variation );
-
-		if ( false !== $cart_item_key ) {
-			$restored_any = true;
-		}
-	}
-
-	return $restored_any;
+function devhub_is_retry_cancelled_order( WC_Order $order ): bool {
+	return $order->has_status( 'cancelled' )
+		&& 'yes' === (string) $order->get_meta( DEVHUB_PAYMENT_RETRY_CANCELLED_META_KEY, true );
 }
 
 /**
- * Cancel the order after the retry limit and send the customer back into a
- * fresh checkout flow with restored cart items.
+ * Clear customer cart/checkout session data after a retry-limit cancellation.
+ *
+ * @return void
+ */
+function devhub_clear_customer_checkout_state(): void {
+	if ( ! function_exists( 'WC' ) || ! WC()->session ) {
+		return;
+	}
+
+	if ( WC()->cart ) {
+		WC()->cart->empty_cart();
+	}
+
+	WC()->session->__unset( DEVHUB_PAYMENT_RETRY_SESSION_KEY );
+	WC()->session->__unset( 'chosen_payment_method' );
+	WC()->session->__unset( 'chosen_shipping_methods' );
+	WC()->session->__unset( 'reload_checkout' );
+	WC()->session->__unset( 'order_awaiting_payment' );
+}
+
+/**
+ * Cancel the order after the retry limit and clear checkout state so the
+ * customer lands on a terminal cancelled page instead of a fresh checkout.
  *
  * @param WC_Order $order WooCommerce order.
  * @return void
@@ -316,32 +301,7 @@ function devhub_cancel_retry_limited_order( WC_Order $order ): void {
 		$order->update_status( 'cancelled', $message );
 	}
 
-	$restored_to_cart = devhub_restore_order_items_to_cart( $order );
-
-	if ( $restored_to_cart ) {
-		wc_add_notice(
-			__(
-				'This payment failed 3 times, so the order was cancelled. Your items were restored so you can place a new order.',
-				'devicehub-theme'
-			),
-			'notice'
-		);
-	} else {
-		wc_add_notice(
-			__(
-				'This payment failed 3 times, so the order was cancelled. Please add your items again and place a new order.',
-				'devicehub-theme'
-			),
-			'error'
-		);
-	}
-
-	$checkout_url = function_exists( 'devhub_get_guest_checkout_continue_url' ) && ! is_user_logged_in()
-		? devhub_get_guest_checkout_continue_url()
-		: wc_get_checkout_url();
-
-	wp_safe_redirect( $checkout_url );
-	exit;
+	devhub_clear_customer_checkout_state();
 }
 
 /**
@@ -450,6 +410,8 @@ function devhub_handle_direct_payment_retry(): void {
 
 	if ( $attempts >= DEVHUB_PAYMENT_MAX_RETRY_ATTEMPTS ) {
 		devhub_cancel_retry_limited_order( $order );
+		wp_safe_redirect( $order->get_checkout_order_received_url() );
+		exit;
 	}
 
 	$gateway_id      = (string) $order->get_payment_method();
@@ -477,8 +439,7 @@ function devhub_handle_direct_payment_retry(): void {
 
 /**
  * When the plugin redirects a retry-limited failed order back to order-received,
- * cancel it there and move the customer into a new checkout flow before the
- * thank-you template renders.
+ * cancel it there before the thank-you template renders.
  *
  * @return void
  */
@@ -505,8 +466,8 @@ function devhub_handle_retry_limit_order_received(): void {
 		devhub_cancel_retry_limited_order( $order );
 	}
 
-	if ( $order->has_status( 'cancelled' ) && 'yes' === (string) $order->get_meta( DEVHUB_PAYMENT_RETRY_CANCELLED_META_KEY, true ) ) {
-		devhub_cancel_retry_limited_order( $order );
+	if ( devhub_is_retry_cancelled_order( $order ) ) {
+		devhub_clear_customer_checkout_state();
 	}
 }
 

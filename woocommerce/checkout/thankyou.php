@@ -22,7 +22,31 @@ defined( 'ABSPATH' ) || exit;
 		do_action( 'woocommerce_before_thankyou', $order->get_id() );
 		?>
 
-		<?php if ( $order->has_status( 'failed' ) ) : ?>
+		<?php if ( function_exists( 'devhub_is_retry_cancelled_order' ) && devhub_is_retry_cancelled_order( $order ) ) : ?>
+
+			<div class="devhub-order-failed-layout">
+				<div class="devhub-order-failed-hero devhub-order-failed-hero--cancelled">
+					<div class="devhub-order-failed-hero__icon devhub-order-failed-hero__icon--warning" aria-hidden="true">
+						<i class="fas fa-exclamation"></i>
+					</div>
+					<h2 class="devhub-order-failed-hero__title devhub-order-failed-hero__title--cancelled">
+						<?php esc_html_e( 'Payment Cancelled', 'devicehub-theme' ); ?>
+					</h2>
+					<p class="devhub-order-failed-hero__alert devhub-order-failed-hero__alert--cancelled">
+						<?php esc_html_e( 'We were unable to complete your payment after several attempts.', 'devicehub-theme' ); ?>
+					</p>
+					<p class="devhub-order-failed-hero__text">
+						<?php esc_html_e( 'No payment was taken for this order. You can return to the home page, continue shopping, and place a new order whenever you are ready.', 'devicehub-theme' ); ?>
+					</p>
+					<div class="devhub-order-failed-hero__actions">
+						<a href="<?php echo esc_url( home_url( '/' ) ); ?>" class="button devhub-order-failed-hero__button">
+							<?php esc_html_e( 'Go Home', 'devicehub-theme' ); ?>
+						</a>
+					</div>
+				</div>
+			</div>
+
+		<?php elseif ( $order->has_status( 'failed' ) ) : ?>
 
 			<div class="devhub-order-failed-layout">
 				<div class="devhub-order-failed-hero">
@@ -108,7 +132,7 @@ defined( 'ABSPATH' ) || exit;
 
 		<?php endif; ?>
 
-		<?php if ( ! $order->has_status( 'failed' ) ) : ?>
+		<?php if ( ! $order->has_status( 'failed' ) && ! ( function_exists( 'devhub_is_retry_cancelled_order' ) && devhub_is_retry_cancelled_order( $order ) ) ) : ?>
 			<?php do_action( 'woocommerce_thankyou_' . $order->get_payment_method(), $order->get_id() ); ?>
 			<?php do_action( 'woocommerce_thankyou', $order->get_id() ); ?>
 		<?php endif; ?>

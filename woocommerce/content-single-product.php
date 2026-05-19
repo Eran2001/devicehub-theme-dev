@@ -434,35 +434,6 @@ $pricing_offer = function_exists('devhub_get_product_pricing_offer_data')
                     </div>
                 <?php endif; ?>
 
-                <div class="devhub-single__safe-checkout">
-                    <p class="devhub-single__safe-checkout-label">
-                        <i class="fas fa-shield-alt" aria-hidden="true"></i>
-                        <?php esc_html_e('Guaranteed safe Checkout', 'devicehub-theme'); ?>
-                    </p>
-                    <div class="devhub-single__payment-slider devhub-single__safe-payment-slider">
-                        <button class="devhub-single__bundle-arrow devhub-single__payment-arrow devhub-single__payment-arrow--prev"
-                            id="devhubPaymentPrev" type="button" aria-label="<?php esc_attr_e('Previous payment option', 'devicehub-theme'); ?>" hidden>
-                            <i class="fas fa-chevron-left" aria-hidden="true"></i>
-                        </button>
-                        <div class="devhub-single__payment-viewport" id="devhubPaymentViewport">
-                            <div class="devhub-single__safe-payment-grid">
-                                <img src="<?php echo esc_url(DEVHUB_URI . '/assets/images/cash-on-delivery.jpg'); ?>"
-                                    alt="<?php esc_attr_e('Cash on delivery', 'devicehub-theme'); ?>" loading="lazy">
-                                <img src="<?php echo esc_url(DEVHUB_URI . '/assets/images/visa-master-new.png'); ?>"
-                                    alt="<?php esc_attr_e('Visa and Mastercard', 'devicehub-theme'); ?>" loading="lazy">
-                                <img src="<?php echo esc_url(DEVHUB_URI . '/assets/images/koko.svg'); ?>"
-                                    alt="<?php esc_attr_e('KOKO payment option', 'devicehub-theme'); ?>" loading="lazy">
-                                <img src="<?php echo esc_url(DEVHUB_URI . '/assets/images/webx.svg'); ?>"
-                                    alt="<?php esc_attr_e('WebX payment option', 'devicehub-theme'); ?>" loading="lazy">
-                            </div>
-                        </div>
-                        <button class="devhub-single__bundle-arrow devhub-single__payment-arrow devhub-single__payment-arrow--next"
-                            id="devhubPaymentNext" type="button" aria-label="<?php esc_attr_e('Next payment option', 'devicehub-theme'); ?>" hidden>
-                            <i class="fas fa-chevron-right" aria-hidden="true"></i>
-                        </button>
-                    </div>
-                </div>
-
                 <!-- ── Cart form ────────────────────────────────────────── -->
                 <?php do_action('woocommerce_before_add_to_cart_form'); ?>
 
@@ -482,6 +453,35 @@ $pricing_offer = function_exists('devhub_get_product_pricing_offer_data')
                     <?php endif; ?>
                     <div class="devhub-single__pricing-table-slot">
                         <?php do_action('woocommerce_before_add_to_cart_button'); ?>
+                    </div>
+
+                    <div class="devhub-single__safe-checkout">
+                        <p class="devhub-single__safe-checkout-label">
+                            <i class="fas fa-shield-alt" aria-hidden="true"></i>
+                            <?php esc_html_e('Guaranteed safe Checkout', 'devicehub-theme'); ?>
+                        </p>
+                        <div class="devhub-single__payment-slider devhub-single__safe-payment-slider">
+                            <button class="devhub-single__bundle-arrow devhub-single__payment-arrow devhub-single__payment-arrow--prev"
+                                id="devhubPaymentPrev" type="button" aria-label="<?php esc_attr_e('Previous payment option', 'devicehub-theme'); ?>" hidden>
+                                <i class="fas fa-chevron-left" aria-hidden="true"></i>
+                            </button>
+                            <div class="devhub-single__payment-viewport" id="devhubPaymentViewport">
+                                <div class="devhub-single__safe-payment-grid">
+                                    <img src="<?php echo esc_url(DEVHUB_URI . '/assets/images/cash-on-delivery.jpg'); ?>"
+                                        alt="<?php esc_attr_e('Cash on delivery', 'devicehub-theme'); ?>" loading="lazy">
+                                    <img src="<?php echo esc_url(DEVHUB_URI . '/assets/images/visa-master-new.png'); ?>"
+                                        alt="<?php esc_attr_e('Visa and Mastercard', 'devicehub-theme'); ?>" loading="lazy">
+                                    <img src="<?php echo esc_url(DEVHUB_URI . '/assets/images/koko.svg'); ?>"
+                                        alt="<?php esc_attr_e('KOKO payment option', 'devicehub-theme'); ?>" loading="lazy">
+                                    <img src="<?php echo esc_url(DEVHUB_URI . '/assets/images/webx.svg'); ?>"
+                                        alt="<?php esc_attr_e('WebX payment option', 'devicehub-theme'); ?>" loading="lazy">
+                                </div>
+                            </div>
+                            <button class="devhub-single__bundle-arrow devhub-single__payment-arrow devhub-single__payment-arrow--next"
+                                id="devhubPaymentNext" type="button" aria-label="<?php esc_attr_e('Next payment option', 'devicehub-theme'); ?>" hidden>
+                                <i class="fas fa-chevron-right" aria-hidden="true"></i>
+                            </button>
+                        </div>
                     </div>
 
                     <div class="devhub-single__actions">

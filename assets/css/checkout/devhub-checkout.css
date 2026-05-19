@@ -4166,6 +4166,10 @@ dl.dh-order-pkg {
   line-height: 1;
 }
 
+.devhub-order-failed-hero__icon--warning {
+  background: #f79009;
+}
+
 .devhub-order-failed-hero__title {
   margin: 0;
   color: #ef4444;
@@ -4175,6 +4179,10 @@ dl.dh-order-pkg {
   line-height: 1.15;
 }
 
+.devhub-order-failed-hero__title--cancelled {
+  color: #101828;
+}
+
 .devhub-order-failed-hero__alert {
   margin: 8px 0 0;
   color: #ef4444;
@@ -4182,6 +4190,10 @@ dl.dh-order-pkg {
   font-size: 19px;
   font-weight: 600;
   line-height: 1.5;
+}
+
+.devhub-order-failed-hero__alert--cancelled {
+  color: #b54708;
 }
 
 .devhub-order-failed-hero__text {
@@ -4274,13 +4286,25 @@ dl.dh-order-pkg {
     font-size: 20px;
   }
 
+  .devhub-order-failed-hero__icon--warning {
+    background: #f79009;
+  }
+
   .devhub-order-failed-hero__title {
     font-size: 30px;
+  }
+
+  .devhub-order-failed-hero__title--cancelled {
+    color: #101828;
   }
 
   .devhub-order-failed-hero__alert {
     font-size: 17px;
     margin-top: 8px;
+  }
+
+  .devhub-order-failed-hero__alert--cancelled {
+    color: #b54708;
   }
 
   .devhub-order-failed-hero__text {
