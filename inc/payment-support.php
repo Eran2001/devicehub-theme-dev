@@ -15,6 +15,8 @@ defined( 'ABSPATH' ) || exit;
 
 const DEVHUB_PAYMENT_MAX_RETRY_ATTEMPTS = 3;
 const DEVHUB_PAYMENT_RETRY_SESSION_KEY  = 'devhub_payment_retry_attempts';
+const DEVHUB_PAYMENT_RETRY_ATTEMPTS_META_KEY = '_devhub_payment_retry_attempts';
+const DEVHUB_PAYMENT_RETRY_CANCELLED_META_KEY = '_devhub_cancelled_after_payment_retries';
 
 add_action( 'woocommerce_order_status_failed', 'devhub_handle_failed_payment_retry', 10, 2 );
 add_action( 'woocommerce_payment_complete', 'devhub_clear_payment_retry_attempts', 10, 1 );
@@ -24,6 +26,7 @@ add_action( 'woocommerce_order_status_completed', 'devhub_clear_payment_retry_at
 add_action( 'woocommerce_order_status_on-hold', 'devhub_clear_payment_retry_attempts', 10, 1 );
 add_action( 'before_woocommerce_pay', 'devhub_add_order_pay_retry_notice', 5 );
 add_action( 'template_redirect', 'devhub_handle_direct_payment_retry', 1 );
+add_action( 'template_redirect', 'devhub_handle_retry_limit_order_received', 2 );
 
 add_filter( 'woocommerce_order_needs_payment', 'devhub_maybe_block_payment_after_retry_limit', 10, 3 );
 
@@ -151,6 +154,40 @@ function devhub_set_payment_retry_attempts_map( array $attempts ): void {
 }
 
 /**
+ * Persist retry attempts to both session and order meta.
+ *
+ * @param WC_Order $order    WooCommerce order.
+ * @param int      $attempts Attempt count.
+ * @return void
+ */
+function devhub_store_payment_retry_attempts( WC_Order $order, int $attempts ): void {
+	$attempts = max( 0, absint( $attempts ) );
+
+	$order->update_meta_data( DEVHUB_PAYMENT_RETRY_ATTEMPTS_META_KEY, $attempts );
+	$order->save_meta_data();
+
+	$session_attempts                         = devhub_get_payment_retry_attempts_map();
+	$session_attempts[ (string) $order->get_id() ] = $attempts;
+	devhub_set_payment_retry_attempts_map( $session_attempts );
+}
+
+/**
+ * Read retry attempts from order meta first, then fall back to session.
+ *
+ * @param WC_Order $order WooCommerce order.
+ * @return int
+ */
+function devhub_get_recorded_payment_retry_attempts( WC_Order $order ): int {
+	$meta_attempts = absint( $order->get_meta( DEVHUB_PAYMENT_RETRY_ATTEMPTS_META_KEY, true ) );
+
+	if ( $meta_attempts > 0 ) {
+		return $meta_attempts;
+	}
+
+	return devhub_get_payment_retry_attempts( $order->get_id() );
+}
+
+/**
  * Get the retry count for a single order in the current session.
  *
  * @param int $order_id WooCommerce order ID.
@@ -168,13 +205,16 @@ function devhub_get_payment_retry_attempts( int $order_id ): int {
  * @return int Updated attempt count.
  */
 function devhub_increment_payment_retry_attempts( int $order_id ): int {
-	$attempts               = devhub_get_payment_retry_attempts_map();
-	$order_key              = (string) $order_id;
-	$attempts[ $order_key ] = isset( $attempts[ $order_key ] ) ? absint( $attempts[ $order_key ] ) + 1 : 1;
+	$order = wc_get_order( $order_id );
 
-	devhub_set_payment_retry_attempts_map( $attempts );
+	if ( ! $order instanceof WC_Order ) {
+		return 0;
+	}
 
-	return $attempts[ $order_key ];
+	$attempts = devhub_get_recorded_payment_retry_attempts( $order ) + 1;
+	devhub_store_payment_retry_attempts( $order, $attempts );
+
+	return $attempts;
 }
 
 /**
@@ -184,6 +224,19 @@ function devhub_increment_payment_retry_attempts( int $order_id ): int {
  * @return void
  */
 function devhub_clear_payment_retry_attempts( int $order_id ): void {
+	$order = wc_get_order( $order_id );
+
+	if ( $order instanceof WC_Order ) {
+		$is_retry_cancelled = $order->has_status( 'cancelled' )
+			&& 'yes' === (string) $order->get_meta( DEVHUB_PAYMENT_RETRY_CANCELLED_META_KEY, true );
+
+		if ( ! $is_retry_cancelled ) {
+			$order->delete_meta_data( DEVHUB_PAYMENT_RETRY_ATTEMPTS_META_KEY );
+			$order->delete_meta_data( DEVHUB_PAYMENT_RETRY_CANCELLED_META_KEY );
+			$order->save_meta_data();
+		}
+	}
+
 	$attempts  = devhub_get_payment_retry_attempts_map();
 	$order_key = (string) absint( $order_id );
 
@@ -193,6 +246,102 @@ function devhub_clear_payment_retry_attempts( int $order_id ): void {
 
 	unset( $attempts[ $order_key ] );
 	devhub_set_payment_retry_attempts_map( $attempts );
+}
+
+/**
+ * Restore a cancelled retry-limit order back into the cart for a fresh
+ * checkout attempt.
+ *
+ * @param WC_Order $order WooCommerce order.
+ * @return bool
+ */
+function devhub_restore_order_items_to_cart( WC_Order $order ): bool {
+	if ( ! function_exists( 'WC' ) || ! WC()->cart ) {
+		return false;
+	}
+
+	$items = $order->get_items( 'line_item' );
+
+	if ( empty( $items ) ) {
+		return false;
+	}
+
+	WC()->cart->empty_cart();
+
+	$restored_any = false;
+
+	foreach ( $items as $item ) {
+		if ( ! $item instanceof WC_Order_Item_Product ) {
+			continue;
+		}
+
+		$product_id   = (int) $item->get_product_id();
+		$variation_id = (int) $item->get_variation_id();
+		$quantity     = max( 1, (int) $item->get_quantity() );
+		$variation    = [];
+
+		if ( $variation_id > 0 ) {
+			$variation_product = wc_get_product( $variation_id );
+			$variation         = $variation_product instanceof WC_Product_Variation ? $variation_product->get_variation_attributes() : [];
+		}
+
+		$cart_item_key = WC()->cart->add_to_cart( $product_id, $quantity, $variation_id, $variation );
+
+		if ( false !== $cart_item_key ) {
+			$restored_any = true;
+		}
+	}
+
+	return $restored_any;
+}
+
+/**
+ * Cancel the order after the retry limit and send the customer back into a
+ * fresh checkout flow with restored cart items.
+ *
+ * @param WC_Order $order WooCommerce order.
+ * @return void
+ */
+function devhub_cancel_retry_limited_order( WC_Order $order ): void {
+	$order->update_meta_data( DEVHUB_PAYMENT_RETRY_CANCELLED_META_KEY, 'yes' );
+	$order->save_meta_data();
+
+	$message = sprintf(
+		/* translators: %d: retry limit */
+		__( 'Payment failed %d times in this session. The order was cancelled automatically and WooCommerce released the reserved stock.', 'devicehub-theme' ),
+		DEVHUB_PAYMENT_MAX_RETRY_ATTEMPTS
+	);
+
+	if ( ! $order->has_status( 'cancelled' ) ) {
+		$order->update_status( 'cancelled', $message );
+	}
+
+	$restored_to_cart = devhub_restore_order_items_to_cart( $order );
+
+	if ( $restored_to_cart ) {
+		wc_add_notice(
+			__(
+				'This payment failed 3 times, so the order was cancelled. Your items were restored so you can place a new order.',
+				'devicehub-theme'
+			),
+			'notice'
+		);
+	} else {
+		wc_add_notice(
+			__(
+				'This payment failed 3 times, so the order was cancelled. Please add your items again and place a new order.',
+				'devicehub-theme'
+			),
+			'error'
+		);
+	}
+
+	$checkout_url = function_exists( 'devhub_get_guest_checkout_continue_url' ) && ! is_user_logged_in()
+		? devhub_get_guest_checkout_continue_url()
+		: wc_get_checkout_url();
+
+	wp_safe_redirect( $checkout_url );
+	exit;
 }
 
 /**
@@ -209,18 +358,14 @@ function devhub_handle_failed_payment_retry( int $order_id, $order = false ): vo
 		return;
 	}
 
-	$attempts = devhub_increment_payment_retry_attempts( $order->get_id() );
-	$order->update_meta_data( '_devhub_payment_retry_attempts', $attempts );
-	$order->save_meta_data();
+	$attempts = devhub_get_recorded_payment_retry_attempts( $order );
+
+	if ( $attempts <= 0 ) {
+		devhub_store_payment_retry_attempts( $order, 1 );
+		$attempts = 1;
+	}
 
 	if ( $attempts >= DEVHUB_PAYMENT_MAX_RETRY_ATTEMPTS ) {
-		$message = sprintf(
-			/* translators: %d: retry limit */
-			__( 'Payment failed %d times in this session. The order was cancelled automatically and WooCommerce released the reserved stock.', 'devicehub-theme' ),
-			DEVHUB_PAYMENT_MAX_RETRY_ATTEMPTS
-		);
-
-		$order->update_status( 'cancelled', $message );
 		return;
 	}
 
@@ -301,20 +446,10 @@ function devhub_handle_direct_payment_retry(): void {
 		exit;
 	}
 
-	$attempts = devhub_get_payment_retry_attempts( $order->get_id() );
+	$attempts = devhub_get_recorded_payment_retry_attempts( $order );
 
 	if ( $attempts >= DEVHUB_PAYMENT_MAX_RETRY_ATTEMPTS ) {
-		wc_add_notice(
-			sprintf(
-				/* translators: %d: retry limit */
-				__( 'This order has reached the maximum of %d payment attempts for the current session.', 'devicehub-theme' ),
-				DEVHUB_PAYMENT_MAX_RETRY_ATTEMPTS
-			),
-			'error'
-		);
-
-		wp_safe_redirect( $order->get_checkout_order_received_url() );
-		exit;
+		devhub_cancel_retry_limited_order( $order );
 	}
 
 	$gateway_id      = (string) $order->get_payment_method();
@@ -327,6 +462,8 @@ function devhub_handle_direct_payment_retry(): void {
 		exit;
 	}
 
+	devhub_store_payment_retry_attempts( $order, $attempts + 1 );
+
 	$result = $gateway->process_payment( $order->get_id() );
 
 	if ( is_array( $result ) && 'success' === ( $result['result'] ?? '' ) && ! empty( $result['redirect'] ) ) {
@@ -336,6 +473,41 @@ function devhub_handle_direct_payment_retry(): void {
 
 	wp_safe_redirect( $order->get_checkout_payment_url() );
 	exit;
+}
+
+/**
+ * When the plugin redirects a retry-limited failed order back to order-received,
+ * cancel it there and move the customer into a new checkout flow before the
+ * thank-you template renders.
+ *
+ * @return void
+ */
+function devhub_handle_retry_limit_order_received(): void {
+	if ( ! function_exists( 'is_wc_endpoint_url' ) || ! is_wc_endpoint_url( 'order-received' ) ) {
+		return;
+	}
+
+	$order_id = absint( get_query_var( 'order-received' ) );
+
+	if ( $order_id <= 0 ) {
+		return;
+	}
+
+	$order = wc_get_order( $order_id );
+
+	if ( ! $order instanceof WC_Order ) {
+		return;
+	}
+
+	$attempts = devhub_get_recorded_payment_retry_attempts( $order );
+
+	if ( $order->has_status( 'failed' ) && $attempts >= DEVHUB_PAYMENT_MAX_RETRY_ATTEMPTS ) {
+		devhub_cancel_retry_limited_order( $order );
+	}
+
+	if ( $order->has_status( 'cancelled' ) && 'yes' === (string) $order->get_meta( DEVHUB_PAYMENT_RETRY_CANCELLED_META_KEY, true ) ) {
+		devhub_cancel_retry_limited_order( $order );
+	}
 }
 
 /**
@@ -353,7 +525,7 @@ function devhub_maybe_block_payment_after_retry_limit( bool $needs_payment, WC_O
 		return false;
 	}
 
-	$attempts = devhub_get_payment_retry_attempts( $order->get_id() );
+	$attempts = devhub_get_recorded_payment_retry_attempts( $order );
 
 	if ( $attempts < DEVHUB_PAYMENT_MAX_RETRY_ATTEMPTS ) {
 		return true;
