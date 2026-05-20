@@ -4206,6 +4206,12 @@ dl.dh-order-pkg {
   line-height: 1.65;
 }
 
+.devhub-order-failed-hero__text--redirect {
+  margin-top: 6px;
+  color: #667085;
+  font-size: 14px;
+}
+
 .devhub-order-failed-hero__actions {
   display: flex;
   align-items: center;
@@ -4311,6 +4317,11 @@ dl.dh-order-pkg {
     font-size: 16px;
     line-height: 1.55;
     margin-top: 8px;
+  }
+
+  .devhub-order-failed-hero__text--redirect {
+    margin-top: 4px;
+    font-size: 13px;
   }
 
   .devhub-order-failed-hero__actions {

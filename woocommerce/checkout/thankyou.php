@@ -38,13 +38,30 @@ defined( 'ABSPATH' ) || exit;
 					<p class="devhub-order-failed-hero__text">
 						<?php esc_html_e( 'No payment was taken for this order. You can return to the home page, continue shopping, and place a new order whenever you are ready.', 'devicehub-theme' ); ?>
 					</p>
-					<div class="devhub-order-failed-hero__actions">
-						<a href="<?php echo esc_url( home_url( '/' ) ); ?>" class="button devhub-order-failed-hero__button">
-							<?php esc_html_e( 'Go Home', 'devicehub-theme' ); ?>
-						</a>
-					</div>
+					<p class="devhub-order-failed-hero__text devhub-order-failed-hero__text--redirect">
+						<?php esc_html_e( 'You will be redirected to the home page in ', 'devicehub-theme' ); ?><span id="devhubRedirectCountdown">5</span> <?php esc_html_e( 'seconds.', 'devicehub-theme' ); ?>
+					</p>
 				</div>
 			</div>
+
+			<script>
+				(function () {
+					var seconds = 5;
+					var countdownEl = document.getElementById('devhubRedirectCountdown');
+
+					window.setInterval(function () {
+						seconds -= 1;
+
+						if (countdownEl && seconds >= 0) {
+							countdownEl.textContent = String(seconds);
+						}
+					}, 1000);
+
+					window.setTimeout(function () {
+						window.location.href = <?php echo wp_json_encode( home_url( '/' ) ); ?>;
+					}, 5000);
+				}());
+			</script>
 
 		<?php elseif ( $order->has_status( 'failed' ) ) : ?>
 
