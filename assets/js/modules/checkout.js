@@ -1751,6 +1751,23 @@
       };
     }
 
+    if (
+      normalized.includes("webxpay") ||
+      normalized.includes("instalments") ||
+      normalized.includes("installments")
+    ) {
+      return {
+        key: "webx",
+        label: "",
+        description: "",
+        images: Array.isArray(methods.webx?.images)
+          ? methods.webx.images
+          : methods.webx?.image
+            ? [methods.webx.image]
+            : [],
+      };
+    }
+
     return null;
   }
 
@@ -1805,7 +1822,9 @@
         image.className = "devhub-payment-method-card__image";
         image.src = src;
         image.alt =
-          index === 0 ? meta.label : `${meta.label} option ${index + 1}`;
+          index === 0
+            ? meta.label || "Payment option"
+            : `${meta.label || "Payment"} option ${index + 1}`;
         media.appendChild(image);
       });
     }

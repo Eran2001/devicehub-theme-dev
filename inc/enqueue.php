@@ -330,6 +330,9 @@ function devhub_enqueue_scripts(): void
                     'cod' => [
                         'image' => DEVHUB_URI . '/assets/images/cash-on-delivery-new.png',
                     ],
+                    'webx' => [
+                        'image' => DEVHUB_URI . '/assets/images/webx.svg',
+                    ],
                 ],
             ],
             'fields' => [
