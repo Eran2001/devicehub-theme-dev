@@ -15,14 +15,75 @@ defined( 'ABSPATH' ) || exit;
 $show_shipping = ! wc_ship_to_billing_address_only() && $order->needs_shipping_address();
 
 /**
+ * Format an order phone for display with country dial code when needed.
+ *
+ * @param WC_Order $order
+ * @param string   $type 'billing' | 'shipping'
+ * @return string
+ */
+function devhub_get_order_phone_display( WC_Order $order, string $type ): string {
+	$get_phone   = "get_{$type}_phone";
+	$get_country = "get_{$type}_country";
+
+	$phone        = trim( (string) $order->{$get_phone}() );
+	$country_code = trim( (string) $order->{$get_country}() );
+
+	if ( '' === $phone && 'shipping' === $type ) {
+		$phone        = trim( (string) $order->get_billing_phone() );
+		$country_code = '' !== $country_code ? $country_code : trim( (string) $order->get_billing_country() );
+	}
+
+	if ( '' === $phone ) {
+		return '';
+	}
+
+	$compact_phone = preg_replace( '/\s+/', '', $phone );
+	if ( is_string( $compact_phone ) && '' !== $compact_phone && '+' === $compact_phone[0] ) {
+		$digits = preg_replace( '/[^\d]/', '', $compact_phone );
+		return '' !== $digits ? '+' . $digits : $phone;
+	}
+
+	$digits = preg_replace( '/\D+/', '', $phone );
+	if ( ! is_string( $digits ) || '' === $digits ) {
+		return $phone;
+	}
+
+	$calling_codes = WC()->countries->get_country_calling_code( $country_code );
+	if ( empty( $calling_codes ) ) {
+		return $phone;
+	}
+
+	$calling_code = is_array( $calling_codes ) ? reset( $calling_codes ) : $calling_codes;
+	$calling_code = preg_replace( '/\D+/', '', (string) $calling_code );
+
+	if ( ! is_string( $calling_code ) || '' === $calling_code ) {
+		return $phone;
+	}
+
+	if ( 0 === strpos( $digits, $calling_code ) ) {
+		return '+' . $digits;
+	}
+
+	return '+' . $calling_code . ' ' . ltrim( $digits, '0' );
+}
+
+/**
  * Build a field grid from an address type ('billing' or 'shipping').
  *
  * @param WC_Order $order
  * @param string   $type 'billing' | 'shipping'
+ * @param array    $options {
+ *     Optional display overrides.
+ *
+ *     @type string      $email_type 'billing' to force billing email display.
+ *     @type bool|null   $show_email Whether to show email. Defaults to true for billing.
+ * }
  * @return array   [ ['label' => '', 'value' => ''], ... ]
  */
-function devhub_address_fields( WC_Order $order, string $type ): array {
+function devhub_address_fields( WC_Order $order, string $type, array $options = [] ): array {
     $get = fn( string $field ) => call_user_func( [ $order, "get_{$type}_{$field}" ] );
+    $email_type = isset( $options['email_type'] ) ? (string) $options['email_type'] : $type;
+    $show_email = array_key_exists( 'show_email', $options ) ? (bool) $options['show_email'] : 'billing' === $type;
 
     $first = $get( 'first_name' );
     $last  = $get( 'last_name' );
@@ -64,10 +125,11 @@ function devhub_address_fields( WC_Order $order, string $type ): array {
         ];
     }
 
-    if ( $type === 'billing' ) {
-        if ( $phone = $order->get_billing_phone() ) {
-            $fields[] = [ 'label' => __( 'Phone', 'devicehub-theme' ), 'value' => $phone ];
-        }
+    if ( $phone = devhub_get_order_phone_display( $order, $type ) ) {
+        $fields[] = [ 'label' => __( 'Phone', 'devicehub-theme' ), 'value' => $phone ];
+    }
+
+    if ( $show_email && 'billing' === $email_type ) {
         if ( $email = $order->get_billing_email() ) {
             $fields[] = [ 'label' => __( 'Email', 'devicehub-theme' ), 'value' => $email ];
         }
@@ -99,7 +161,7 @@ function devhub_order_address_preview( WC_Order $order, string $type ): array {
             $get( 'city' ),
             $get( 'postcode' ),
             $country,
-            $type === 'billing' ? $order->get_billing_phone() : '',
+            devhub_get_order_phone_display( $order, $type ),
         ],
         static fn( $value ) => trim( (string) $value ) !== ''
     );
@@ -114,15 +176,59 @@ function devhub_order_address_preview( WC_Order $order, string $type ): array {
 <section class="woocommerce-customer-details devhub-order-customer-details">
 
     <?php
-    $sections          = [ 'billing' => __( 'Billing address', 'woocommerce' ) ];
     $use_compact_cards = function_exists( 'is_order_received_page' ) && is_order_received_page();
+    $sections          = [
+        [
+            'source'     => 'billing',
+            'title'      => __( 'Billing address', 'woocommerce' ),
+            'email_type' => 'billing',
+            'show_email' => true,
+        ],
+    ];
 
     if ( $show_shipping ) {
-        $sections['shipping'] = __( 'Shipping address', 'woocommerce' );
+        if ( $use_compact_cards ) {
+            // Checkout UI intentionally relabels the visible address blocks:
+            // the first visible block uses Woo shipping fields but is titled
+            // "Billing address", while the second uses Woo billing fields and
+            // is titled "Shipping address". Mirror that exact user-facing flow
+            // here, while still keeping the billing email on the visible
+            // billing card.
+            $sections = [
+                [
+                    'source'     => 'shipping',
+                    'title'      => __( 'Billing address', 'woocommerce' ),
+                    'email_type' => 'billing',
+                    'show_email' => true,
+                ],
+                [
+                    'source'     => 'billing',
+                    'title'      => __( 'Shipping address', 'woocommerce' ),
+                    'email_type' => 'billing',
+                    'show_email' => false,
+                ],
+            ];
+        } else {
+            $sections[] = [
+                'source'     => 'shipping',
+                'title'      => __( 'Shipping address', 'woocommerce' ),
+                'email_type' => 'billing',
+                'show_email' => false,
+            ];
+        }
     }
 
-    foreach ( $sections as $type => $title ) :
-        $fields = devhub_address_fields( $order, $type );
+    foreach ( $sections as $section ) :
+        $type    = $section['source'];
+        $title   = $section['title'];
+        $fields  = devhub_address_fields(
+            $order,
+            $type,
+            [
+                'email_type' => $section['email_type'],
+                'show_email' => $section['show_email'],
+            ]
+        );
         if ( empty( $fields ) ) continue;
         $preview = devhub_order_address_preview( $order, $type );
     ?>

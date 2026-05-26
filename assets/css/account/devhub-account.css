@@ -1919,6 +1919,23 @@
   font-weight: 800;
 }
 
+/* Preserve intl-tel-input spacing on My Account address forms. */
+.woocommerce-account .devhub-account-content .iti {
+  display: block;
+  width: 100%;
+}
+
+.woocommerce-account
+  .devhub-account-content
+  .woocommerce-address-fields__field-wrapper
+  input.iti__tel-input {
+  width: 100%;
+  padding-top: 7px !important;
+  padding-right: 16px !important;
+  padding-bottom: 7px !important;
+  padding-left: 92px !important;
+}
+
 .devhub-account-user-email,
 .devhub-account-logout,
 .devhub-address-card__meta,

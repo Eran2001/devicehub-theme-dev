@@ -18,8 +18,10 @@ const DEVHUB_ORDER_PICKUP_STORE_DETAILS     = 'pickup_store_details';
 
 add_action( 'woocommerce_init', 'devhub_register_checkout_delivery_fields' );
 add_action( 'woocommerce_blocks_validate_location_contact_fields', 'devhub_validate_checkout_delivery_fields', 10, 3 );
+add_action( 'woocommerce_blocks_validate_location_contact_fields', 'devhub_validate_checkout_phone_fields', 20, 3 );
 add_action( 'woocommerce_store_api_checkout_update_order_from_request', 'devhub_store_checkout_delivery_meta', 10, 2 );
 add_action( 'woocommerce_store_api_checkout_update_order_from_request', 'devhub_save_delivery_type_meta', 20, 2 );
+add_action( 'woocommerce_store_api_checkout_update_order_from_request', 'devhub_normalize_checkout_order_phone_numbers', 30, 2 );
 // Runs AFTER WC address validation + payment — safe to clear shipping here.
 add_action( 'woocommerce_store_api_checkout_order_processed', 'devhub_clear_shipping_for_pickup', 10, 1 );
 // Ensure payment_method_title is populated and generate a transaction ID for COD.
@@ -83,6 +85,91 @@ function devhub_clear_shipping_for_pickup( WC_Order $order ): void {
 	$order->set_shipping_country( $order->get_billing_country() );
 	$order->set_shipping_phone( $order->get_billing_phone() );
 	$order->save();
+}
+
+/**
+ * Convert checkout phone values into international format before order save.
+ *
+ * Woo Blocks checkout state keeps the visible field in national format so the
+ * intl-tel-input UI can render the country dial code separately. Orders should
+ * still persist phone numbers in E.164-like format for later display and
+ * downstream integrations.
+ *
+ * @param WC_Order        $order   Order being processed.
+ * @param WP_REST_Request $request Checkout request.
+ * @return void
+ */
+function devhub_normalize_checkout_order_phone_numbers( WC_Order $order, WP_REST_Request $request ): void {
+	$billing_address  = (array) $request->get_param( 'billing_address' );
+	$shipping_address = (array) $request->get_param( 'shipping_address' );
+
+	$billing_phone = devhub_normalize_checkout_phone_number(
+		(string) ( $billing_address['phone'] ?? $order->get_billing_phone() ),
+		(string) ( $billing_address['country'] ?? $order->get_billing_country() )
+	);
+
+	if ( '' !== $billing_phone ) {
+		$order->set_billing_phone( $billing_phone );
+	}
+
+	$shipping_phone = devhub_normalize_checkout_phone_number(
+		(string) ( $shipping_address['phone'] ?? $order->get_shipping_phone() ),
+		(string) ( $shipping_address['country'] ?? $order->get_shipping_country() )
+	);
+
+	if ( '' !== $shipping_phone ) {
+		$order->set_shipping_phone( $shipping_phone );
+	}
+}
+
+/**
+ * Convert a phone value into international format using the country dial code.
+ *
+ * @param string $phone        Raw phone value from checkout.
+ * @param string $country_code WooCommerce country code.
+ * @return string
+ */
+function devhub_normalize_checkout_phone_number( string $phone, string $country_code ): string {
+	$phone = trim( $phone );
+
+	if ( '' === $phone ) {
+		return '';
+	}
+
+	$compact_phone = preg_replace( '/\s+/', '', $phone );
+
+	if ( is_string( $compact_phone ) && '' !== $compact_phone && '+' === $compact_phone[0] ) {
+		$digits = preg_replace( '/[^\d]/', '', $compact_phone );
+		return '' !== $digits ? '+' . $digits : '';
+	}
+
+	$digits = preg_replace( '/\D+/', '', $phone );
+	if ( ! is_string( $digits ) || '' === $digits ) {
+		return '';
+	}
+
+	$calling_codes = WC()->countries->get_country_calling_code( $country_code );
+	if ( empty( $calling_codes ) ) {
+		return $phone;
+	}
+
+	$calling_code = is_array( $calling_codes ) ? reset( $calling_codes ) : $calling_codes;
+	$calling_code = preg_replace( '/\D+/', '', (string) $calling_code );
+
+	if ( ! is_string( $calling_code ) || '' === $calling_code ) {
+		return $phone;
+	}
+
+	if ( 0 === strpos( $digits, $calling_code ) ) {
+		return '+' . $digits;
+	}
+
+	$national_digits = ltrim( $digits, '0' );
+	if ( '' === $national_digits ) {
+		$national_digits = $digits;
+	}
+
+	return '+' . $calling_code . $national_digits;
 }
 
 /**
@@ -396,6 +483,84 @@ function devhub_validate_checkout_delivery_fields( WP_Error $errors, $fields, st
 			]
 		);
 	}
+}
+
+/**
+ * Server-side validation for checkout phone fields in Woo Blocks.
+ *
+ * The phone plugin only provides browser-side validation on block checkout.
+ * This hook ensures invalid phone values cannot create orders even if the
+ * front-end flow is bypassed.
+ *
+ * @param WP_Error $errors Validation errors.
+ * @param array    $fields Submitted fields for the current location.
+ * @param string   $group  Field group/location key from Woo Blocks.
+ * @return void
+ */
+function devhub_validate_checkout_phone_fields( WP_Error $errors, $fields, string $group ): void {
+	$fields = is_array( $fields ) ? $fields : [];
+
+	if ( empty( $fields['phone'] ) ) {
+		return;
+	}
+
+	$phone        = sanitize_text_field( (string) $fields['phone'] );
+	$country_code = strtolower( sanitize_text_field( (string) ( $fields['country'] ?? '' ) ) );
+
+	if ( devhub_is_checkout_phone_number_valid( $phone, $country_code ) ) {
+		return;
+	}
+
+	$error_key = 'devhub_invalid_phone_' . sanitize_key( $group );
+
+	$errors->add(
+		$error_key,
+		__( 'Please enter a valid phone number including the country code.', 'devicehub-theme' ),
+		[
+			'location' => $group,
+			'key'      => 'phone',
+		]
+	);
+}
+
+/**
+ * Validate a checkout phone number against the selected country.
+ *
+ * For Sri Lanka, the national part must be exactly 9 digits. For other
+ * countries, fall back to a conservative length check so obviously invalid
+ * values are blocked while we keep the current plugin-based UI intact.
+ *
+ * @param string $phone        Raw submitted phone value.
+ * @param string $country_code Selected country code.
+ * @return bool
+ */
+function devhub_is_checkout_phone_number_valid( string $phone, string $country_code ): bool {
+	$digits = preg_replace( '/\D+/', '', $phone );
+
+	if ( ! is_string( $digits ) || '' === $digits ) {
+		return false;
+	}
+
+	$calling_codes = WC()->countries->get_country_calling_code( strtoupper( $country_code ) );
+	$calling_code  = is_array( $calling_codes ) ? reset( $calling_codes ) : $calling_codes;
+	$calling_code  = preg_replace( '/\D+/', '', (string) $calling_code );
+
+	$national_digits = $digits;
+
+	if ( is_string( $calling_code ) && '' !== $calling_code && 0 === strpos( $digits, $calling_code ) ) {
+		$national_digits = substr( $digits, strlen( $calling_code ) );
+	}
+
+	if ( is_string( $national_digits ) && '' !== $national_digits && '0' === $national_digits[0] ) {
+		$national_digits = ltrim( $national_digits, '0' );
+	}
+
+	if ( 'lk' === $country_code ) {
+		return strlen( (string) $national_digits ) === 9;
+	}
+
+	$length = strlen( (string) $national_digits );
+	return $length >= 6 && $length <= 15;
 }
 
 /**

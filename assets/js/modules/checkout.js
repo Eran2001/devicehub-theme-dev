@@ -87,6 +87,355 @@
   let discountSummaryTimer = null;
   let discountSummaryRequest = null;
 
+  function getPhoneValidatorConfig() {
+    return window.PVFWC_DATA || null;
+  }
+
+  function normalizeIntlTelInputValue(input) {
+    if (!input || !input.iti || typeof input.iti.getSelectedCountry !== "function") {
+      return false;
+    }
+
+    const selectedCountry = input.iti.getSelectedCountry();
+    const dialCode = selectedCountry?.dialCode
+      ? String(selectedCountry.dialCode)
+      : "";
+    const rawValue = String(input.value || "").replace(/\s+/g, "").trim();
+
+    if (!dialCode || !rawValue || rawValue.charAt(0) !== "+") {
+      return false;
+    }
+
+    const prefix = `+${dialCode}`;
+    if (!rawValue.startsWith(prefix)) {
+      return false;
+    }
+
+    const nationalValue = rawValue.slice(prefix.length);
+    if (!nationalValue) {
+      return false;
+    }
+
+    input.value = nationalValue;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    return true;
+  }
+
+  function bindIntlTelInputNormalizers(input) {
+    if (!input || input.dataset.devhubPhoneNormalizeBound === "1") {
+      return;
+    }
+
+    input.dataset.devhubPhoneNormalizeBound = "1";
+
+    input.addEventListener("blur", () => {
+      syncCheckoutIntlTelInputValue(input);
+    });
+
+    input.addEventListener("paste", () => {
+      window.setTimeout(() => {
+        normalizeIntlTelInputValue(input);
+        syncCheckoutIntlTelInputValue(input);
+      }, 0);
+    });
+  }
+
+  function syncCheckoutIntlTelInputValue(input) {
+    if (
+      !input ||
+      !input.iti ||
+      typeof input.iti.getNumber !== "function"
+    ) {
+      return false;
+    }
+
+    const rawValue = String(input.value || "").trim();
+    if (!rawValue) {
+      return false;
+    }
+
+    const selectedCountry =
+      typeof input.iti.getSelectedCountry === "function"
+        ? input.iti.getSelectedCountry()
+        : null;
+    const dialCode = selectedCountry?.dialCode
+      ? `+${String(selectedCountry.dialCode)}`
+      : "";
+    const compactValue = rawValue.replace(/\s+/g, "");
+    const nationalValue =
+      dialCode && compactValue.startsWith(dialCode)
+        ? compactValue.slice(dialCode.length)
+        : compactValue.replace(/^\+/, "");
+
+    if (!nationalValue) {
+      return false;
+    }
+
+    input.value = nationalValue;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+
+    const cartDispatch = getCartDispatch();
+    const cartData = getCartData();
+
+    if (input.id === "shipping-phone" || input.id === "shipping_phone") {
+      if (typeof cartDispatch?.setShippingAddress === "function") {
+        cartDispatch.setShippingAddress({
+          ...(cartData?.shippingAddress || {}),
+          phone: nationalValue,
+        });
+      }
+      return true;
+    }
+
+    if (input.id === "billing-phone" || input.id === "billing_phone") {
+      if (typeof cartDispatch?.setBillingAddress === "function") {
+        cartDispatch.setBillingAddress({
+          ...(cartData?.billingAddress || {}),
+          phone: nationalValue,
+        });
+      }
+      return true;
+    }
+
+    return true;
+  }
+
+  function buildPhoneCountryOrder(baseCountries, preferredCountries) {
+    const preferred = Array.isArray(preferredCountries)
+      ? preferredCountries
+      : [];
+    const preferredInList = preferred.filter((country) =>
+      baseCountries.includes(country),
+    );
+    const rest = baseCountries.filter(
+      (country) => !preferredInList.includes(country),
+    );
+
+    if (preferredInList.length) {
+      return [...preferredInList, "divider", ...rest];
+    }
+
+    return baseCountries;
+  }
+
+  function showPhoneValidationError(input, message) {
+    const wrapper = input.closest(".wc-block-components-text-input");
+    if (!wrapper) {
+      return;
+    }
+
+    clearPhoneValidationError(input);
+
+    const errorId = `${input.id || "phone-field"}-validation-error`;
+    const error = document.createElement("div");
+    error.className =
+      "wc-block-components-validation-error devhub-phone-validation-error";
+    error.id = errorId;
+    error.setAttribute("role", "alert");
+    error.innerHTML =
+      '<p><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm0 15.5a1.25 1.25 0 1 1 1.25-1.25A1.25 1.25 0 0 1 12 17.5Zm1-4.5h-2V7h2Z"></path></svg><span></span></p>';
+    error.querySelector("span").textContent = message;
+
+    wrapper.classList.add("has-error");
+    wrapper.classList.add("devhub-phone-field-has-error");
+    input.setAttribute("aria-invalid", "true");
+    input.setAttribute("aria-errormessage", errorId);
+    wrapper.appendChild(error);
+  }
+
+  function clearPhoneValidationError(input) {
+    const wrapper = input?.closest(".wc-block-components-text-input");
+    const error = wrapper?.querySelector(".devhub-phone-validation-error");
+
+    wrapper?.classList.remove("has-error");
+    wrapper?.classList.remove("devhub-phone-field-has-error");
+    input?.removeAttribute("aria-invalid");
+    input?.removeAttribute("aria-errormessage");
+
+    if (error) {
+      error.remove();
+    }
+  }
+
+  function getNationalDigitsForValidation(input) {
+    if (!input) {
+      return "";
+    }
+
+    const selectedCountry =
+      typeof input.iti?.getSelectedCountry === "function"
+        ? input.iti.getSelectedCountry()
+        : null;
+    const dialCode = selectedCountry?.dialCode
+      ? String(selectedCountry.dialCode)
+      : "";
+    const rawValue = String(input.value || "").trim();
+    const compactValue = rawValue.replace(/\s+/g, "");
+    const digits = compactValue.replace(/\D+/g, "");
+
+    if (!digits) {
+      return "";
+    }
+
+    if (dialCode && digits.startsWith(dialCode)) {
+      return digits.slice(dialCode.length);
+    }
+
+    if (digits.startsWith("0") && digits.length > 1) {
+      return digits.slice(1);
+    }
+
+    return digits;
+  }
+
+  function isStrictPhoneValid(input) {
+    if (!input || !input.iti) {
+      return true;
+    }
+
+    const value = String(input.value || "").trim();
+    if (!value) {
+      return true;
+    }
+
+    const selectedCountry =
+      typeof input.iti.getSelectedCountry === "function"
+        ? input.iti.getSelectedCountry()
+        : null;
+    const iso2 = String(selectedCountry?.iso2 || "").toLowerCase();
+    const nationalDigits = getNationalDigitsForValidation(input);
+
+    if (iso2 === "lk") {
+      return nationalDigits.length === 9;
+    }
+
+    if (typeof input.iti.isValidNumber === "function") {
+      return input.iti.isValidNumber();
+    }
+
+    return true;
+  }
+
+  function validateCheckoutPhoneField(input, config) {
+    const value = String(input?.value || "").trim();
+    const isEmpty = value === "";
+
+    if (config.respectWcValidation && isEmpty) {
+      clearPhoneValidationError(input);
+      return true;
+    }
+
+    if (isEmpty) {
+      clearPhoneValidationError(input);
+      return true;
+    }
+
+    if (!isStrictPhoneValid(input)) {
+      showPhoneValidationError(input, config.errorMessage);
+      return false;
+    }
+
+    clearPhoneValidationError(input);
+    return true;
+  }
+
+  function bindPhoneSubmitValidation(input, iti, config) {
+    const form = input.closest("form");
+    if (!form || input.dataset.devhubPhoneSubmitBound === "1") {
+      return;
+    }
+
+    input.dataset.devhubPhoneSubmitBound = "1";
+    form.addEventListener(
+      "submit",
+      (event) => {
+        if (!validateCheckoutPhoneField(input, config)) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          input.focus();
+          return false;
+        }
+
+        if (input.value.trim() !== "") {
+          input.value = iti.getNumber();
+        }
+
+        return true;
+      },
+      true,
+    );
+  }
+
+  function initMissingPhoneField(input, countries) {
+    const config = getPhoneValidatorConfig();
+    if (
+      !config ||
+      !input ||
+      input.dataset.pvfwcInit ||
+      typeof window.intlTelInput === "undefined"
+    ) {
+      return;
+    }
+
+    if (!input.isConnected || input.getClientRects().length === 0) {
+      return;
+    }
+
+    const baseCountries = Array.isArray(countries) && countries.length
+      ? countries
+      : Array.isArray(config.allowedCountries)
+        ? config.allowedCountries
+        : [];
+
+    input.dataset.pvfwcInit = "true";
+
+    const iti = window.intlTelInput(input, {
+      initialCountry: config.defaultCountry || "us",
+      onlyCountries: baseCountries,
+      countryOrder: buildPhoneCountryOrder(
+        baseCountries,
+        config.preferredCountries,
+      ),
+      nationalMode: false,
+      imagePath: config.imgPath,
+    });
+
+    bindIntlTelInputNormalizers(input);
+    input.iti = iti;
+    normalizeIntlTelInputValue(input);
+    syncCheckoutIntlTelInputValue(input);
+    input.addEventListener("blur", () => {
+      validateCheckoutPhoneField(input, config);
+    });
+    input.addEventListener("input", () => {
+      clearPhoneValidationError(input);
+    });
+    bindPhoneSubmitValidation(input, iti, config);
+  }
+
+  function ensurePhoneValidatorFields() {
+    const config = getPhoneValidatorConfig();
+    if (!config) {
+      return;
+    }
+
+    const shouldEnhanceCheckoutPhones =
+      !!config.enableBilling || !!config.enableShipping;
+
+    if (shouldEnhanceCheckoutPhones) {
+      document
+        .querySelectorAll("#billing-phone, #billing_phone")
+        .forEach((input) => initMissingPhoneField(input));
+
+      document
+        .querySelectorAll("#shipping-phone, #shipping_phone")
+        .forEach((input) =>
+          initMissingPhoneField(input, config.shippingCountries),
+        );
+    }
+  }
+
   function getCheckoutStore() {
     return window.wp?.data?.select?.(CHECKOUT_STORE_KEY) || null;
   }
@@ -2097,6 +2446,7 @@
     enhanceOrderSummaryRemoveButtons();
     expandAddressLineTwo();
     relabelAddressBlocks();
+    ensurePhoneValidatorFields();
     enhanceBillingEmailField();
     moveSidebarSummaryForMobile();
     observeOrderSummary();
@@ -2147,6 +2497,7 @@
       enhanceOrderSummaryRemoveButtons();
       expandAddressLineTwo();
       relabelAddressBlocks();
+      ensurePhoneValidatorFields();
       enhanceBillingEmailField();
       moveSidebarSummaryForMobile();
       observeOrderSummary();

@@ -822,6 +822,71 @@ tr:has(.order-actions--heading) {
   opacity: 1 !important;
 }
 
+/* Preserve intl-tel-input spacing so the flag/dial code does not overlap text. */
+.wc-block-checkout__main .wc-block-components-text-input .iti,
+.wc-block-checkout__main .wc-block-components-address-form .iti {
+  display: block;
+  width: 100%;
+}
+
+.wc-block-checkout__main .wc-block-components-text-input input.iti__tel-input,
+.wc-block-checkout__main .wc-block-components-address-form input.iti__tel-input {
+  width: 100%;
+  padding-top: 10px !important;
+  padding-right: 16px !important;
+  padding-bottom: 10px !important;
+  padding-left: 92px !important;
+}
+
+.wc-block-checkout__main
+  .wc-block-components-text-input.devhub-phone-field-has-error {
+  margin-bottom: 0 !important;
+}
+
+.wc-block-checkout__main
+  .wc-block-components-text-input
+  > .devhub-phone-validation-error {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  color: #667085 !important;
+  margin: 12px 0 0 !important;
+  padding: 0 !important;
+}
+
+.wc-block-checkout__main
+  .wc-block-components-text-input
+  > .devhub-phone-validation-error
+  > p {
+  align-items: center;
+  display: flex;
+  gap: 2px;
+  line-height: 1;
+  margin: 0;
+  padding: 0;
+}
+
+.wc-block-checkout__main
+  .wc-block-components-text-input
+  > .devhub-phone-validation-error
+  > p
+  > svg {
+  fill: currentColor;
+  flex-shrink: 0;
+  height: 1.5em;
+  margin: -0.4735em 0;
+  width: 1.5em;
+}
+
+.wc-block-checkout__main
+  .wc-block-components-text-input
+  > .devhub-phone-validation-error
+  > p
+  > span {
+  font-size: var(--wp--preset--font-size--small, 14px);
+  line-height: 1.4;
+}
+
 /* Sidebar cards */
 @media (min-width: 1025px) {
   body.devhub-checkout--sidebar-relocation
