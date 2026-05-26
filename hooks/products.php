@@ -211,14 +211,23 @@ function devhub_render_home_product_sections(): void
         }
 
         $section_id = 'devhub-' . sanitize_html_class($category->slug);
+        $category_name = devhub_get_product_category_display_name($category);
         $view_all_url = get_term_link($category);
 
         if (is_wp_error($view_all_url)) {
             $view_all_url = function_exists('wc_get_page_permalink') ? wc_get_page_permalink('shop') : home_url('/');
         }
 
+        devhub_render_promo_banner_section(
+            devhub_get_promo_banner_category_placement($category, 'before'),
+            sprintf(
+                __('Promo banner before %s', 'devicehub-theme'),
+                $category_name
+            )
+        );
+
         devhub_render_product_section(
-            devhub_get_product_category_display_name($category),
+            $category_name,
             $section_id,
             $category->slug,
             DEVHUB_URI . '/assets/images/Original-Img.svg',
@@ -226,10 +235,10 @@ function devhub_render_home_product_sections(): void
         );
 
         devhub_render_promo_banner_section(
-            devhub_get_promo_banner_category_placement($category),
+            devhub_get_promo_banner_category_placement($category, 'after'),
             sprintf(
                 __('Promo banner after %s', 'devicehub-theme'),
-                devhub_get_product_category_display_name($category)
+                $category_name
             )
         );
     }

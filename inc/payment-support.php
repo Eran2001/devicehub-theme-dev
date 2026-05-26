@@ -27,8 +27,312 @@ add_action( 'woocommerce_order_status_on-hold', 'devhub_clear_payment_retry_atte
 add_action( 'before_woocommerce_pay', 'devhub_add_order_pay_retry_notice', 5 );
 add_action( 'template_redirect', 'devhub_handle_direct_payment_retry', 1 );
 add_action( 'template_redirect', 'devhub_handle_retry_limit_order_received', 2 );
+add_action( 'init', 'devhub_capture_sampath_payment_payload_meta', 1 );
+add_action( 'init', 'devhub_capture_webxpay_payment_payload_meta', 1 );
 
 add_filter( 'woocommerce_order_needs_payment', 'devhub_maybe_block_payment_after_retry_limit', 10, 3 );
+
+const DEVHUB_PAYMENT_META_GATEWAY                = 'devicehub_payment_gateway';
+const DEVHUB_PAYMENT_META_GATEWAY_LABEL          = 'devicehub_payment_gateway_label';
+const DEVHUB_PAYMENT_META_TOTAL_PAID             = 'devicehub_payment_total_paid';
+const DEVHUB_PAYMENT_META_BANK_TENURE            = 'devicehub_payment_bank_tenure';
+const DEVHUB_PAYMENT_META_BNPL_PARTNER_REFERENCE = 'devicehub_payment_bnpl_partner_reference_no';
+const DEVHUB_PAYMENT_META_RESPONSE_CODE          = 'devicehub_payment_response_code';
+const DEVHUB_PAYMENT_META_RESPONSE_MESSAGE       = 'devicehub_payment_response_message';
+const DEVHUB_PAYMENT_META_GATEWAY_REFERENCE      = 'devicehub_payment_gateway_reference';
+const DEVHUB_PAYMENT_META_RAW_RESPONSE           = 'devicehub_payment_raw_response';
+
+/**
+ * Convert gateway data into a plain PHP array recursively.
+ *
+ * @param mixed $value Gateway response object/array/scalar.
+ * @return mixed
+ */
+function devhub_payment_to_array( $value ) {
+	if ( is_array( $value ) ) {
+		return array_map( 'devhub_payment_to_array', $value );
+	}
+
+	if ( is_object( $value ) ) {
+		return array_map( 'devhub_payment_to_array', get_object_vars( $value ) );
+	}
+
+	return $value;
+}
+
+/**
+ * Find the first non-empty value for any candidate key in a nested payload.
+ *
+ * @param mixed    $payload         Nested payload.
+ * @param string[] $candidate_keys  Candidate keys to search.
+ * @return string
+ */
+function devhub_payment_find_nested_value( $payload, array $candidate_keys ): string {
+	$queue      = [ $payload ];
+	$candidates = array_map(
+		static fn( string $key ): string => strtolower( $key ),
+		$candidate_keys
+	);
+
+	while ( $queue ) {
+		$current = array_shift( $queue );
+
+		if ( is_object( $current ) ) {
+			$current = get_object_vars( $current );
+		}
+
+		if ( ! is_array( $current ) ) {
+			continue;
+		}
+
+		foreach ( $current as $key => $value ) {
+			if ( in_array( strtolower( (string) $key ), $candidates, true ) && ! is_array( $value ) && ! is_object( $value ) ) {
+				$normalized = trim( wp_strip_all_tags( (string) $value ) );
+
+				if ( '' !== $normalized ) {
+					return $normalized;
+				}
+			}
+
+			if ( is_array( $value ) || is_object( $value ) ) {
+				$queue[] = $value;
+			}
+		}
+	}
+
+	return '';
+}
+
+/**
+ * Build a display label such as "NDB EMI - 9 Months" from gateway payload data.
+ *
+ * @param mixed $payload Gateway payload.
+ * @return string
+ */
+function devhub_payment_build_bank_tenure_label( $payload ): string {
+	$bank = devhub_payment_find_nested_value(
+		$payload,
+		[
+			'bank',
+			'bank_name',
+			'bankname',
+			'issuer_bank',
+			'issuing_bank',
+			'issuingbank',
+			'emi_bank',
+			'installment_bank',
+		]
+	);
+
+	$tenure = devhub_payment_find_nested_value(
+		$payload,
+		[
+			'tenure',
+			'tenure_months',
+			'tenuremonths',
+			'emi_tenure',
+			'installment_tenure',
+			'installmenttenure',
+			'plan_tenure',
+			'months',
+		]
+	);
+
+	if ( '' !== $tenure && preg_match( '/^\d+$/', $tenure ) ) {
+		$tenure .= ' Months';
+	}
+
+	if ( '' !== $bank && '' !== $tenure ) {
+		return $bank . ' - ' . $tenure;
+	}
+
+	return $bank ?: $tenure;
+}
+
+/**
+ * Persist normalized payment payload meta on an order.
+ *
+ * @param WC_Order $order Order object.
+ * @param array    $meta  Normalized meta payload.
+ * @return void
+ */
+function devhub_store_payment_payload_meta( WC_Order $order, array $meta ): void {
+	$defaults = [
+		DEVHUB_PAYMENT_META_GATEWAY                => '',
+		DEVHUB_PAYMENT_META_GATEWAY_LABEL          => '',
+		DEVHUB_PAYMENT_META_TOTAL_PAID             => '',
+		DEVHUB_PAYMENT_META_BANK_TENURE            => '',
+		DEVHUB_PAYMENT_META_BNPL_PARTNER_REFERENCE => '',
+		DEVHUB_PAYMENT_META_RESPONSE_CODE          => '',
+		DEVHUB_PAYMENT_META_RESPONSE_MESSAGE       => '',
+		DEVHUB_PAYMENT_META_GATEWAY_REFERENCE      => '',
+		DEVHUB_PAYMENT_META_RAW_RESPONSE           => '',
+	];
+
+	$payload = array_merge( $defaults, $meta );
+
+	foreach ( $payload as $key => $value ) {
+		$order->update_meta_data( $key, $value );
+	}
+
+	$order->save_meta_data();
+}
+
+/**
+ * Capture Sampath callback data and save normalized order meta.
+ *
+ * @return void
+ */
+function devhub_capture_sampath_payment_payload_meta(): void {
+	if ( empty( $_POST['clientRef'] ) || empty( $_POST['reqid'] ) ) {
+		return;
+	}
+
+	$order_id = absint( wp_unslash( $_POST['clientRef'] ) );
+	$order    = wc_get_order( $order_id );
+
+	if ( ! $order instanceof WC_Order || 'sampathipg' !== (string) $order->get_payment_method() ) {
+		return;
+	}
+
+	$settings = get_option( 'woocommerce_sampathipg_settings', [] );
+
+	if ( ! is_array( $settings ) ) {
+		$settings = [];
+	}
+
+	$plugin_path = WP_PLUGIN_DIR . '/paycorp_sampath_ipg/';
+
+	if ( ! class_exists( 'GatewayConfig' ) && file_exists( $plugin_path . 'classes/GatewayConfig.php' ) ) {
+		require_once $plugin_path . 'classes/GatewayConfig.php';
+	}
+
+	if ( ! class_exists( 'GatewayConfig' ) ) {
+		return;
+	}
+
+	$gateway = new GatewayConfig(
+		$plugin_path,
+		[
+			'end_point'   => (string) ( $settings['pg_domain'] ?? '' ),
+			'auth_token'  => (string) ( $settings['auth_token'] ?? '' ),
+			'hmac_secret' => (string) ( $settings['hmac_secret'] ?? '' ),
+			'client_id'   => (string) ( $settings['client_id'] ?? '' ),
+		]
+	);
+
+	$response = $gateway->completePayment(
+		[
+			'reqid' => sanitize_text_field( wp_unslash( $_POST['reqid'] ) ),
+		]
+	);
+
+	$payload            = devhub_payment_to_array( $response );
+	$gateway_reference  = devhub_payment_find_nested_value( $payload, [ 'txnReference', 'txn_reference' ] );
+	$response_code      = devhub_payment_find_nested_value( $payload, [ 'responseCode', 'response_code' ] );
+	$response_message   = devhub_payment_find_nested_value( $payload, [ 'responseText', 'response_text' ] );
+	$partner_reference  = devhub_payment_find_nested_value( $payload, [ 'bnpl_partner_reference_no', 'partner_reference_no', 'partnerReferenceNo', 'loan_reference_no', 'loanReferenceNo' ] );
+	$bank_tenure        = devhub_payment_build_bank_tenure_label( $payload );
+	$paid_amount_raw    = devhub_payment_find_nested_value( $payload, [ 'paymentAmount', 'payment_amount', 'amountPaid', 'amount_paid' ] );
+	$paid_amount        = '' !== $paid_amount_raw ? $paid_amount_raw : wc_format_decimal( $order->get_total(), 2 );
+	$raw_response_json  = wp_json_encode( $payload );
+
+	devhub_store_payment_payload_meta(
+		$order,
+		[
+			DEVHUB_PAYMENT_META_GATEWAY                => 'sampathipg',
+			DEVHUB_PAYMENT_META_GATEWAY_LABEL          => 'Sampath IPG',
+			DEVHUB_PAYMENT_META_TOTAL_PAID             => (string) $paid_amount,
+			DEVHUB_PAYMENT_META_BANK_TENURE            => $bank_tenure,
+			DEVHUB_PAYMENT_META_BNPL_PARTNER_REFERENCE => $partner_reference,
+			DEVHUB_PAYMENT_META_RESPONSE_CODE          => $response_code,
+			DEVHUB_PAYMENT_META_RESPONSE_MESSAGE       => $response_message,
+			DEVHUB_PAYMENT_META_GATEWAY_REFERENCE      => $gateway_reference,
+			DEVHUB_PAYMENT_META_RAW_RESPONSE           => is_string( $raw_response_json ) ? $raw_response_json : '',
+		]
+	);
+}
+
+/**
+ * Capture WebXpay callback data and save normalized order meta.
+ *
+ * @return void
+ */
+function devhub_capture_webxpay_payment_payload_meta(): void {
+	if ( empty( $_POST['payment'] ) || empty( $_POST['signature'] ) ) {
+		return;
+	}
+
+	$settings = get_option( 'woocommerce_webxpay_settings', [] );
+
+	if ( ! is_array( $settings ) || empty( $settings['public_key'] ) ) {
+		return;
+	}
+
+	$payment   = base64_decode( sanitize_text_field( wp_unslash( $_POST['payment'] ) ), true );
+	$signature = base64_decode( sanitize_text_field( wp_unslash( $_POST['signature'] ) ), true );
+
+	if ( false === $payment || false === $signature ) {
+		return;
+	}
+
+	$signature_value = '';
+	openssl_public_decrypt( $signature, $signature_value, (string) $settings['public_key'] );
+
+	if ( $signature_value !== $payment ) {
+		return;
+	}
+
+	$response_variables = explode( '|', $payment );
+
+	if ( empty( $response_variables[0] ) ) {
+		return;
+	}
+
+	$order_id = absint( $response_variables[0] );
+	$order    = wc_get_order( $order_id );
+
+	if ( ! $order instanceof WC_Order || 'webxpay' !== (string) $order->get_payment_method() ) {
+		return;
+	}
+
+	$payload = [
+		'payment'                         => sanitize_text_field( wp_unslash( $_POST['payment'] ) ),
+		'response_variables'              => array_map( 'sanitize_text_field', $response_variables ),
+		'additional_fee_discount_message' => isset( $_POST['additional_fee_discount_message'] ) ? sanitize_text_field( wp_unslash( $_POST['additional_fee_discount_message'] ) ) : '',
+		'post'                            => array_map(
+			static function ( $value ) {
+				return is_scalar( $value ) ? sanitize_text_field( wp_unslash( (string) $value ) ) : '';
+			},
+			$_POST
+		),
+	];
+
+	$gateway_reference = isset( $response_variables[1] ) ? sanitize_text_field( $response_variables[1] ) : '';
+	$response_code     = isset( $response_variables[3] ) ? sanitize_text_field( $response_variables[3] ) : '';
+	$response_message  = isset( $response_variables[5] ) ? sanitize_text_field( $response_variables[5] ) : '';
+	$paid_amount       = isset( $response_variables[7] ) && '' !== trim( (string) $response_variables[7] )
+		? wc_format_decimal( (string) $response_variables[7], 2 )
+		: wc_format_decimal( $order->get_total(), 2 );
+	$partner_reference = devhub_payment_find_nested_value( $payload, [ 'bnpl_partner_reference_no', 'partner_reference_no', 'partnerReferenceNo', 'loan_reference_no', 'loanReferenceNo' ] );
+	$bank_tenure       = devhub_payment_build_bank_tenure_label( $payload );
+	$raw_response_json = wp_json_encode( $payload );
+
+	devhub_store_payment_payload_meta(
+		$order,
+		[
+			DEVHUB_PAYMENT_META_GATEWAY                => 'webxpay',
+			DEVHUB_PAYMENT_META_GATEWAY_LABEL          => 'WebXPay',
+			DEVHUB_PAYMENT_META_TOTAL_PAID             => (string) $paid_amount,
+			DEVHUB_PAYMENT_META_BANK_TENURE            => $bank_tenure,
+			DEVHUB_PAYMENT_META_BNPL_PARTNER_REFERENCE => $partner_reference,
+			DEVHUB_PAYMENT_META_RESPONSE_CODE          => $response_code,
+			DEVHUB_PAYMENT_META_RESPONSE_MESSAGE       => $response_message,
+			DEVHUB_PAYMENT_META_GATEWAY_REFERENCE      => $gateway_reference,
+			DEVHUB_PAYMENT_META_RAW_RESPONSE           => is_string( $raw_response_json ) ? $raw_response_json : '',
+		]
+	);
+}
 
 /**
  * Return enabled WooCommerce payment gateways for display purposes.

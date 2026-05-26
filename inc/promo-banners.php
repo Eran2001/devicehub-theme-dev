@@ -53,9 +53,18 @@ function devhub_get_promo_banner_placements(): array
     $placements = [];
 
     foreach (devhub_get_promo_banner_categories() as $category) {
-        $placements[devhub_get_promo_banner_category_placement($category)] = sprintf(
+        $category_label = function_exists('devhub_get_product_category_display_name')
+            ? devhub_get_product_category_display_name($category)
+            : $category->name;
+
+        $placements[devhub_get_promo_banner_category_placement($category, 'before')] = sprintf(
+            __('Before %s', 'devicehub-theme'),
+            $category_label
+        );
+
+        $placements[devhub_get_promo_banner_category_placement($category, 'after')] = sprintf(
             __('After %s', 'devicehub-theme'),
-            $category->name
+            $category_label
         );
     }
 
@@ -96,18 +105,18 @@ function devhub_get_promo_banner_categories(): array
     }));
 }
 
-function devhub_get_promo_banner_category_placement(WP_Term $category): string
+function devhub_get_promo_banner_category_placement(WP_Term $category, string $position = 'after'): string
 {
-    return 'after_' . sanitize_key($category->slug);
+    $position = $position === 'before' ? 'before' : 'after';
+
+    return $position . '_' . sanitize_key($category->slug);
 }
 
 function devhub_get_legacy_promo_banner_placements(string $placement): array
 {
     $legacy_placements = [
-        'after_broad-bands' => ['before_broadbands'],
-        'after_broadbands' => ['before_broadbands'],
-        'after_electronics' => ['before_electronics'],
-        'after_accessories' => ['before_accessories'],
+        'before_broad-bands' => ['before_broadbands'],
+        'before_broadbands' => ['before_broadbands'],
     ];
 
     return $legacy_placements[$placement] ?? [];
