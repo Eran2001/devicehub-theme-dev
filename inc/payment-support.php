@@ -21,9 +21,11 @@ const DEVHUB_PAYMENT_RETRY_CANCELLED_META_KEY = '_devhub_cancelled_after_payment
 add_action( 'woocommerce_order_status_failed', 'devhub_handle_failed_payment_retry', 10, 2 );
 add_action( 'woocommerce_payment_complete', 'devhub_clear_payment_retry_attempts', 10, 1 );
 add_action( 'woocommerce_payment_complete', 'devhub_backfill_sampath_payment_meta_from_order_notes', 20, 1 );
+add_action( 'woocommerce_payment_complete', 'devhub_backfill_webxpay_payment_meta', 30, 1 );
 add_action( 'woocommerce_order_status_cancelled', 'devhub_clear_payment_retry_attempts', 10, 1 );
 add_action( 'woocommerce_order_status_processing', 'devhub_clear_payment_retry_attempts', 10, 1 );
 add_action( 'woocommerce_order_status_processing', 'devhub_backfill_sampath_payment_meta_from_order_notes', 20, 1 );
+add_action( 'woocommerce_order_status_processing', 'devhub_backfill_webxpay_payment_meta', 30, 1 );
 add_action( 'woocommerce_order_status_completed', 'devhub_clear_payment_retry_attempts', 10, 1 );
 add_action( 'woocommerce_order_status_on-hold', 'devhub_clear_payment_retry_attempts', 10, 1 );
 add_action( 'before_woocommerce_pay', 'devhub_add_order_pay_retry_notice', 5 );
@@ -570,7 +572,7 @@ function devhub_capture_webxpay_payment_payload_meta(): void {
 		$order,
 		[
 			DEVHUB_PAYMENT_META_GATEWAY                => 'webxpay',
-			DEVHUB_PAYMENT_META_GATEWAY_LABEL          => 'WebXPay',
+			DEVHUB_PAYMENT_META_GATEWAY_LABEL          => devhub_get_order_payment_gateway_label( $order ),
 			DEVHUB_PAYMENT_META_TOTAL_PAID             => (string) $paid_amount,
 			DEVHUB_PAYMENT_META_BANK_TENURE            => $bank_tenure,
 			DEVHUB_PAYMENT_META_BNPL_PARTNER_REFERENCE => $partner_reference,
@@ -578,6 +580,114 @@ function devhub_capture_webxpay_payment_payload_meta(): void {
 			DEVHUB_PAYMENT_META_RESPONSE_MESSAGE       => $response_message,
 			DEVHUB_PAYMENT_META_GATEWAY_REFERENCE      => $gateway_reference,
 			DEVHUB_PAYMENT_META_RAW_RESPONSE           => is_string( $raw_response_json ) ? $raw_response_json : '',
+		]
+	);
+}
+
+/**
+ * Backfill WebXPay payment meta from the plugin's own persisted success data.
+ *
+ * WebXPay updates order status successfully, but on some paid orders our early
+ * POST callback listener does not capture the response payload. The plugin also
+ * stores the transaction in its own table and adds a success note, so use those
+ * as the reliable update source after payment completion.
+ *
+ * @param int|WC_Order $order Order ID or object.
+ * @return void
+ */
+function devhub_backfill_webxpay_payment_meta( $order ): void {
+	global $wpdb;
+
+	$order = $order instanceof WC_Order ? $order : wc_get_order( $order );
+
+	if ( ! $order instanceof WC_Order || 'webxpay' !== (string) $order->get_payment_method() ) {
+		return;
+	}
+
+	$current_reference = (string) $order->get_meta( DEVHUB_PAYMENT_META_GATEWAY_REFERENCE, true );
+	$current_code      = (string) $order->get_meta( DEVHUB_PAYMENT_META_RESPONSE_CODE, true );
+	$current_message   = (string) $order->get_meta( DEVHUB_PAYMENT_META_RESPONSE_MESSAGE, true );
+
+	if ( '' !== $current_reference && '' !== $current_code && '' !== $current_message ) {
+		return;
+	}
+
+	$table_name = $wpdb->prefix . 'webxpay_ipg';
+	$row        = $wpdb->get_row(
+		$wpdb->prepare(
+			"SELECT order_reference_number, date_time_transaction, payment_gateway_id, status_code, comment, amount
+			FROM {$table_name}
+			WHERE order_id = %d
+			ORDER BY id DESC
+			LIMIT 1",
+			$order->get_id()
+		),
+		ARRAY_A
+	);
+
+	$parsed = [
+		'gateway_reference' => '',
+		'response_code'     => '',
+		'response_message'  => '',
+		'transaction_date'  => '',
+	];
+
+	if ( is_array( $row ) ) {
+		$parsed['gateway_reference'] = isset( $row['order_reference_number'] ) ? trim( wp_strip_all_tags( (string) $row['order_reference_number'] ) ) : '';
+		$parsed['response_code']     = isset( $row['status_code'] ) ? trim( wp_strip_all_tags( (string) $row['status_code'] ) ) : '';
+		$parsed['response_message']  = isset( $row['comment'] ) ? trim( wp_strip_all_tags( (string) $row['comment'] ) ) : '';
+		$parsed['transaction_date']  = isset( $row['date_time_transaction'] ) ? trim( wp_strip_all_tags( (string) $row['date_time_transaction'] ) ) : '';
+	}
+
+	if ( '' === $parsed['gateway_reference'] || '' === $parsed['response_code'] ) {
+		$notes = wc_get_order_notes(
+			[
+				'order_id' => $order->get_id(),
+				'type'     => 'internal',
+			]
+		);
+
+		foreach ( $notes as $note ) {
+			$content = html_entity_decode( wp_strip_all_tags( preg_replace( '/<br\s*\/?>/i', "\n", (string) $note->content ) ), ENT_QUOTES, 'UTF-8' );
+
+			if ( '' === $parsed['gateway_reference'] && preg_match( '/Order reference number\s*:\s*([^\r\n]+)/i', $content, $matches ) ) {
+				$parsed['gateway_reference'] = trim( $matches[1] );
+			}
+
+			if ( '' === $parsed['response_message'] && preg_match( '/WebXpay Payment unsuccessful.*?Comment:\s*([^\r\n]+)/i', $content, $matches ) ) {
+				$parsed['response_message'] = trim( $matches[1] );
+			}
+
+			if ( '' !== $parsed['gateway_reference'] && '' !== $parsed['response_message'] ) {
+				break;
+			}
+		}
+	}
+
+	if ( '' === $parsed['gateway_reference'] && '' === $parsed['response_code'] && '' === $parsed['response_message'] ) {
+		return;
+	}
+
+	$raw_response_json = wp_json_encode(
+		[
+			'source' => 'webxpay_table_backfill',
+			'parsed' => $parsed,
+			'row'    => is_array( $row ) ? $row : [],
+		]
+	);
+
+	devhub_store_payment_payload_meta(
+		$order,
+		[
+			DEVHUB_PAYMENT_META_GATEWAY                => 'webxpay',
+			DEVHUB_PAYMENT_META_GATEWAY_LABEL          => devhub_get_order_payment_gateway_label( $order ),
+			DEVHUB_PAYMENT_META_TOTAL_PAID             => (string) wc_format_decimal( $order->get_total(), 2 ),
+			DEVHUB_PAYMENT_META_BANK_TENURE            => (string) $order->get_meta( DEVHUB_PAYMENT_META_BANK_TENURE, true ),
+			DEVHUB_PAYMENT_META_BNPL_PARTNER_REFERENCE => (string) $order->get_meta( DEVHUB_PAYMENT_META_BNPL_PARTNER_REFERENCE, true ),
+			DEVHUB_PAYMENT_META_RESPONSE_CODE          => '' !== $current_code ? $current_code : $parsed['response_code'],
+			DEVHUB_PAYMENT_META_RESPONSE_MESSAGE       => '' !== $current_message ? $current_message : $parsed['response_message'],
+			DEVHUB_PAYMENT_META_GATEWAY_REFERENCE      => '' !== $current_reference ? $current_reference : $parsed['gateway_reference'],
+			DEVHUB_PAYMENT_META_RAW_RESPONSE           => is_string( $raw_response_json ) ? $raw_response_json : (string) $order->get_meta( DEVHUB_PAYMENT_META_RAW_RESPONSE, true ),
 		]
 	);
 }
