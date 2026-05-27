@@ -19,6 +19,8 @@ const DEVHUB_PAYMENT_RETRY_ATTEMPTS_META_KEY = '_devhub_payment_retry_attempts';
 const DEVHUB_PAYMENT_RETRY_CANCELLED_META_KEY = '_devhub_cancelled_after_payment_retries';
 
 add_action( 'woocommerce_order_status_failed', 'devhub_handle_failed_payment_retry', 10, 2 );
+add_action( 'woocommerce_order_status_failed', 'devhub_backfill_sampath_payment_meta_from_order_notes', 20, 1 );
+add_action( 'woocommerce_order_status_failed', 'devhub_backfill_webxpay_payment_meta', 30, 1 );
 add_action( 'woocommerce_payment_complete', 'devhub_clear_payment_retry_attempts', 10, 1 );
 add_action( 'woocommerce_payment_complete', 'devhub_backfill_sampath_payment_meta_from_order_notes', 20, 1 );
 add_action( 'woocommerce_payment_complete', 'devhub_backfill_webxpay_payment_meta', 30, 1 );

@@ -42,6 +42,7 @@ require_once DEVHUB_INC_DIR . '/payment-support.php'; // WooCommerce-driven paym
 require_once DEVHUB_INC_DIR . '/pickup-code.php'; // Pickup code generation + customer/admin output
 require_once DEVHUB_INC_DIR . '/hero-slides.php'; // Admin-managed homepage hero slides
 require_once DEVHUB_INC_DIR . '/promo-banners.php'; // Admin-managed homepage promo banners
+require_once DEVHUB_INC_DIR . '/admin-shop-manager-ui.php'; // Shop manager admin UI visibility overrides
 // require_once DEVHUB_INC_DIR . '/category-showcase.php'; // disabled — hidden from admin
 require_once DEVHUB_INC_DIR . '/footer-settings.php'; // Admin-managed footer settings page
 
