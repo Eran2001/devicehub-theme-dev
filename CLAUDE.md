@@ -13,6 +13,7 @@ DeviceHub Theme is a custom WordPress WooCommerce theme for HUTCH Device Hub, bu
 ## Development Environment
 
 This theme runs on a LocalWP instance. The WordPress root is at:
+
 ```
 c:\Users\M Eran Hasareli\Local Sites\customer-journey\app\public\
 ```
@@ -35,16 +36,16 @@ There is no npm, composer, webpack, or any build step. Edit files directly.
 
 `functions.php` is a pure orchestrator — no logic, only `require` statements. All functionality lives in:
 
-| File | Responsibility |
-|------|---------------|
-| `inc/setup.php` | Theme supports, nav menus (`primary_menu`), image sizes |
-| `inc/enqueue.php` | All CSS/JS asset loading (page-specific, cache-busted) |
-| `inc/helpers.php` | Product helpers + `devhub_render_product_card()` |
-| `inc/hooks.php` | Shopire/WooCommerce hook overrides, currency filter |
-| `inc/widgets.php` | Sidebar registration |
-| `hooks/home.php` | Hero, categories, preorder section renderers |
-| `hooks/flash.php` | Flash sale section renderer |
-| `hooks/products.php` | Mobile phones & broadbands section renderers |
+| File                 | Responsibility                                          |
+| -------------------- | ------------------------------------------------------- |
+| `inc/setup.php`      | Theme supports, nav menus (`primary_menu`), image sizes |
+| `inc/enqueue.php`    | All CSS/JS asset loading (page-specific, cache-busted)  |
+| `inc/helpers.php`    | Product helpers + `devhub_render_product_card()`        |
+| `inc/hooks.php`      | Shopire/WooCommerce hook overrides, currency filter     |
+| `inc/widgets.php`    | Sidebar registration                                    |
+| `hooks/home.php`     | Hero, categories, preorder section renderers            |
+| `hooks/flash.php`    | Flash sale section renderer                             |
+| `hooks/products.php` | Mobile phones & broadbands section renderers            |
 
 ### Hook-Driven Home Page
 
@@ -68,18 +69,20 @@ All product cards are rendered via `devhub_render_product_card($product)` in `in
 ### Asset Loading Pattern
 
 `inc/enqueue.php` provides two helpers:
+
 - `devhub_style($handle, $path, $deps)` — enqueues CSS with `filemtime` cache-busting, silently skips missing files
 - `devhub_script($handle, $path, $deps, $in_footer)` — same for JS
 
 Assets are loaded conditionally per page context (`is_front_page()`, `is_shop()`, `is_product()`, etc.). Add new page-specific assets using these helpers in the appropriate conditional block in `inc/enqueue.php`.
 
 A global `devhubConfig` JS object is always available via the `devhub-utils` handle, containing:
+
 ```js
-devhubConfig.ajaxUrl    // wp-admin/admin-ajax.php
-devhubConfig.restUrl    // WC REST API v3 base URL
-devhubConfig.nonce      // WC REST nonce
-devhubConfig.cartUrl
-devhubConfig.isLoggedIn
+devhubConfig.ajaxUrl; // wp-admin/admin-ajax.php
+devhubConfig.restUrl; // WC REST API v3 base URL
+devhubConfig.nonce; // WC REST nonce
+devhubConfig.cartUrl;
+devhubConfig.isLoggedIn;
 ```
 
 ### CSS Architecture
@@ -110,9 +113,34 @@ Legacy `SHOPIRE_THEME_*` constants are bridged in `functions.php` for backward c
 ## Key Constants
 
 Defined in `functions.php`:
+
 ```php
 DEVHUB_VERSION   // theme version string
 DEVHUB_DIR       // absolute path to theme root
 DEVHUB_URI       // URL to theme root
 DEVHUB_INC_DIR   // path to /inc/
 ```
+
+Upload the slide image using the Hero Banner Image box.
+
+Recommended desktop image size: 1920 x 493 px.
+
+Upload a portrait/square image in the Mobile Image box for better mobile display.
+
+Recommended mobile image size: 2560 x 1261 px.
+
+Use the Order field in Page Attributes to control slide order.
+
+Slides are identified automatically in the admin list, so no slide name is required.
+
+Required before publish:
+
+Banner Area
+Banner Image (Featured Image)
+Recommended desktop image size: 2560 x 276 px.
+
+Optional: add a taller Mobile Image for screens 767px and below.
+
+Recommended mobile image size: 2560 x 559 px.
+
+Use the Order field in Page Attributes to control banner order inside the same area.

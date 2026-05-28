@@ -42,8 +42,9 @@ function devhub_render_hero_section(): void
                                     <?php foreach ($hero_slides as $index => $slide):
                                         $slide_image_id  = (int) get_post_thumbnail_id($slide);
                                         $mobile_image_id = (int) get_post_meta($slide->ID, '_devhub_mobile_image_id', true);
-                                        $slide_title     = trim((string) get_the_title($slide));
-                                        $alt             = $slide_title !== '' ? $slide_title : __('Hero banner', 'devicehub-theme');
+                                        $alt             = function_exists('devhub_get_hero_slide_alt_text')
+                                            ? devhub_get_hero_slide_alt_text($slide_image_id, $mobile_image_id)
+                                            : __('Hero banner', 'devicehub-theme');
                                         $loading         = $index === 0 ? 'eager' : 'lazy';
                                         ?>
                                         <article class="devhub-hero__slide"

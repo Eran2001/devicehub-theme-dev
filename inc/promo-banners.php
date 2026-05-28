@@ -14,6 +14,10 @@ const DEVHUB_PROMO_BANNER_LINK_META = '_devhub_promo_banner_link';
 const DEVHUB_PROMO_BANNER_MOBILE_IMAGE_META = '_devhub_promo_banner_mobile_image_id';
 
 add_action('init', 'devhub_register_promo_banners');
+add_action('pre_get_posts', 'devhub_set_promo_banner_admin_order');
+add_action('admin_enqueue_scripts', 'devhub_enqueue_promo_banner_admin_assets', 20);
+add_action('wp_ajax_devhub_save_promo_banner_order', 'devhub_save_promo_banner_order');
+add_action('add_meta_boxes', 'devhub_reposition_promo_banner_meta_boxes', 100, 2);
 
 function devhub_register_promo_banners(): void
 {
@@ -40,7 +44,7 @@ function devhub_register_promo_banners(): void
         'show_in_menu'        => true,
         'menu_position'       => 59,
         'menu_icon'           => 'dashicons-format-image',
-        'supports'            => ['title', 'thumbnail', 'page-attributes'],
+        'supports'            => ['thumbnail', 'page-attributes'],
         'exclude_from_search' => true,
         'publicly_queryable'  => false,
         'show_in_nav_menus'   => false,
@@ -150,6 +154,112 @@ function devhub_get_promo_banners_by_placement(string $placement): array
     ]);
 }
 
+function devhub_set_promo_banner_admin_order(WP_Query $query): void
+{
+    if (!is_admin() || !$query->is_main_query()) {
+        return;
+    }
+
+    if (($query->get('post_type') ?? '') !== 'devhub_promo_banner') {
+        return;
+    }
+
+    if ($query->get('orderby')) {
+        return;
+    }
+
+    $query->set('orderby', [
+        'menu_order' => 'ASC',
+        'date' => 'DESC',
+    ]);
+    $query->set('order', 'ASC');
+}
+
+function devhub_enqueue_promo_banner_admin_assets(string $hook_suffix): void
+{
+    if ($hook_suffix !== 'edit.php') {
+        return;
+    }
+
+    $screen = get_current_screen();
+
+    if (!$screen || $screen->post_type !== 'devhub_promo_banner') {
+        return;
+    }
+
+    $is_default_listing = empty($_GET['s'])
+        && empty($_GET['m'])
+        && empty($_GET['orderby'])
+        && empty($_GET['order'])
+        && empty($_GET['paged'])
+        && empty($_GET['post_status']);
+
+    if (!$is_default_listing) {
+        return;
+    }
+
+    wp_enqueue_script('jquery-ui-sortable');
+
+    wp_register_script('devhub-promo-banner-admin-order', '', ['jquery', 'jquery-ui-sortable'], DEVHUB_VERSION, true);
+    wp_enqueue_script('devhub-promo-banner-admin-order');
+    wp_add_inline_script('devhub-promo-banner-admin-order', "
+        jQuery(function ($) {
+            var \$tableBody = $('#the-list');
+            if (!\$tableBody.length) {
+                return;
+            }
+
+            \$tableBody.sortable({
+                items: 'tr',
+                axis: 'y',
+                handle: '.devhub-promo-banner-order-handle',
+                helper: function (event, ui) {
+                    ui.children().each(function () {
+                        $(this).width($(this).width());
+                    });
+                    return ui;
+                },
+                update: function () {
+                    var orderedIds = \$tableBody.sortable('toArray', { attribute: 'id' })
+                        .map(function (rowId) {
+                            return parseInt(String(rowId).replace('post-', ''), 10);
+                        })
+                        .filter(function (id) {
+                            return !isNaN(id);
+                        });
+
+                    $.post(ajaxurl, {
+                        action: 'devhub_save_promo_banner_order',
+                        nonce: '" . esc_js(wp_create_nonce('devhub_save_promo_banner_order')) . "',
+                        ordered_ids: orderedIds
+                    });
+                }
+            });
+        });
+    ");
+
+    wp_add_inline_style('devhub-admin', '
+        .post-type-devhub_promo_banner #the-list tr { cursor: default; }
+        .post-type-devhub_promo_banner .column-sort_handle { width: 52px; text-align: center; }
+        .post-type-devhub_promo_banner .devhub-promo-banner-order-handle {
+            cursor: move;
+            color: #8c8f94;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+        }
+        .post-type-devhub_promo_banner .devhub-promo-banner-order-handle:hover {
+            color: #1d2327;
+        }
+        .post-type-devhub_promo_banner .ui-sortable-helper {
+            background: #fff;
+            box-shadow: 0 8px 20px rgba(16, 24, 40, 0.12);
+        }
+    ');
+}
+
 add_action('add_meta_boxes_devhub_promo_banner', 'devhub_add_promo_banner_meta_boxes');
 
 function devhub_add_promo_banner_meta_boxes(): void
@@ -164,12 +274,12 @@ function devhub_add_promo_banner_meta_boxes(): void
     );
 
     add_meta_box(
-        'devhub-promo-banner-help',
-        __('Promo Banner Guide', 'devicehub-theme'),
-        'devhub_render_promo_banner_help_box',
+        'devhub-promo-banner-image',
+        __('Banner Image', 'devicehub-theme'),
+        'devhub_render_promo_banner_image_box',
         'devhub_promo_banner',
-        'side',
-        'high'
+        'normal',
+        'default'
     );
 
     add_meta_box(
@@ -180,6 +290,95 @@ function devhub_add_promo_banner_meta_boxes(): void
         'side',
         'default'
     );
+}
+
+function devhub_render_promo_banner_image_box(WP_Post $post): void
+{
+    wp_enqueue_media();
+    $image_id = (int) get_post_thumbnail_id($post);
+    $has_image = $image_id > 0;
+    ?>
+    <div id="devhub-promo-image-wrap">
+        <div id="devhub-promo-image-preview" <?php echo !$has_image ? 'style="display:none;"' : ''; ?>>
+            <?php if ($has_image): ?>
+                <?php echo wp_get_attachment_image($image_id, [200, 120], false, ['style' => 'width:100%;height:auto;border-radius:4px;margin-bottom:8px;display:block;']); ?>
+            <?php endif; ?>
+        </div>
+        <input type="hidden" name="_thumbnail_id" id="devhub-promo-image-id" value="<?php echo esc_attr($has_image ? (string) $image_id : ''); ?>">
+        <button type="button" id="devhub-promo-image-upload" class="button button-primary" style="width:100%;margin-bottom:4px;">
+            <?php echo $has_image ? esc_html__('Change Banner Image', 'devicehub-theme') : esc_html__('Upload Banner Image', 'devicehub-theme'); ?>
+        </button>
+        <button type="button" id="devhub-promo-image-remove" class="button" style="width:100%;<?php echo !$has_image ? 'display:none;' : ''; ?>">
+            <?php esc_html_e('Remove Banner Image', 'devicehub-theme'); ?>
+        </button>
+    </div>
+    <p class="description" style="margin-top:8px;font-size:13px;font-weight:600;color:#1d2327;">
+        <?php esc_html_e('Recommended desktop image size: 2560 x 276 px.', 'devicehub-theme'); ?>
+    </p>
+    <script>
+    (function () {
+        var frame;
+        var uploadBtn = document.getElementById('devhub-promo-image-upload');
+        var removeBtn = document.getElementById('devhub-promo-image-remove');
+        var input = document.getElementById('devhub-promo-image-id');
+        var preview = document.getElementById('devhub-promo-image-preview');
+
+        if (!uploadBtn || !removeBtn || !input || !preview) {
+            return;
+        }
+
+        uploadBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            if (frame) {
+                frame.open();
+                return;
+            }
+
+            frame = wp.media({
+                title: '<?php echo esc_js(__('Select Banner Image', 'devicehub-theme')); ?>',
+                button: { text: '<?php echo esc_js(__('Use this image', 'devicehub-theme')); ?>' },
+                multiple: false,
+                library: { type: 'image' }
+            });
+
+            frame.on('select', function () {
+                var att = frame.state().get('selection').first().toJSON();
+                input.value = att.id;
+                preview.innerHTML = '<img src="' + att.url + '" style="width:100%;height:auto;border-radius:4px;margin-bottom:8px;display:block;">';
+                preview.style.display = '';
+                removeBtn.style.display = '';
+                uploadBtn.textContent = '<?php echo esc_js(__('Change Banner Image', 'devicehub-theme')); ?>';
+                if (window.devhubPromoBannerTogglePublish) {
+                    window.devhubPromoBannerTogglePublish();
+                }
+            });
+
+            frame.open();
+        });
+
+        removeBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            input.value = '';
+            preview.innerHTML = '';
+            preview.style.display = 'none';
+            removeBtn.style.display = 'none';
+            uploadBtn.textContent = '<?php echo esc_js(__('Upload Banner Image', 'devicehub-theme')); ?>';
+            if (window.devhubPromoBannerTogglePublish) {
+                window.devhubPromoBannerTogglePublish();
+            }
+        });
+    })();
+    </script>
+    <?php
+}
+
+function devhub_reposition_promo_banner_meta_boxes(string $post_type, WP_Post $post): void
+{
+    if ($post_type !== 'devhub_promo_banner') {
+        return;
+    }
+
+    remove_meta_box('postimagediv', 'devhub_promo_banner', 'side');
 }
 
 function devhub_render_promo_banner_settings_box(WP_Post $post): void
@@ -207,20 +406,50 @@ function devhub_render_promo_banner_settings_box(WP_Post $post): void
             value="<?php echo esc_attr($link); ?>" placeholder="https://example.com/page"
             style="width:100%;margin-top:8px;">
     </p>
-    <?php
-}
+    <script>
+    (function () {
+        var publishBtn = document.getElementById('publish');
 
-function devhub_render_promo_banner_help_box(): void
-{
-    echo '<p>' . esc_html__('Required before publish:', 'devicehub-theme') . '</p>';
-    echo '<ul style="list-style:disc;padding-left:18px;margin:0;">';
-    echo '<li>' . esc_html__('Banner Area', 'devicehub-theme') . '</li>';
-    echo '<li>' . esc_html__('Banner Image (Featured Image)', 'devicehub-theme') . '</li>';
-    echo '</ul>';
-    echo '<p style="margin-top:12px;">' . esc_html__('Recommended desktop image size: 2560 x 276 px.', 'devicehub-theme') . '</p>';
-    echo '<p style="margin-top:12px;">' . esc_html__('Optional: add a taller Mobile Image for screens 767px and below.', 'devicehub-theme') . '</p>';
-    echo '<p style="margin-top:12px;">' . esc_html__('Recommended mobile image size: 2560 x 559 px.', 'devicehub-theme') . '</p>';
-    echo '<p style="margin-top:12px;">' . esc_html__('Use the Order field in Page Attributes to control banner order inside the same area.', 'devicehub-theme') . '</p>';
+        function togglePublishState() {
+            var placement = document.getElementById('devhub-promo-banner-placement');
+            var imageInput = document.getElementById('devhub-promo-image-id');
+
+            if (!publishBtn || !placement || !imageInput) {
+                return;
+            }
+
+            var hasPlacement = placement.value.trim() !== '';
+            var hasImage = imageInput.value.trim() !== '';
+            var isReady = hasPlacement && hasImage;
+
+            publishBtn.disabled = !isReady;
+            publishBtn.setAttribute('aria-disabled', isReady ? 'false' : 'true');
+            publishBtn.title = isReady
+                ? ''
+                : '<?php echo esc_js(__('Add a banner area and banner image before publishing.', 'devicehub-theme')); ?>';
+        }
+
+        window.devhubPromoBannerTogglePublish = togglePublishState;
+
+        document.addEventListener('DOMContentLoaded', function () {
+            var placement = document.getElementById('devhub-promo-banner-placement');
+            var imageInput = document.getElementById('devhub-promo-image-id');
+
+            if (placement) {
+                placement.addEventListener('change', togglePublishState);
+                placement.addEventListener('input', togglePublishState);
+            }
+
+            if (imageInput) {
+                imageInput.addEventListener('change', togglePublishState);
+                imageInput.addEventListener('input', togglePublishState);
+            }
+
+            togglePublishState();
+        });
+    })();
+    </script>
+    <?php
 }
 
 function devhub_render_promo_banner_mobile_image_box(WP_Post $post): void
@@ -242,7 +471,10 @@ function devhub_render_promo_banner_mobile_image_box(WP_Post $post): void
             <?php esc_html_e('Remove Mobile Image', 'devicehub-theme'); ?>
         </button>
     </div>
-    <p class="description" style="margin-top:8px;font-size:11px;">
+    <p class="description" style="margin-top:8px;font-size:13px;font-weight:600;color:#1d2327;">
+        <?php esc_html_e('Recommended mobile image size: 2560 x 559 px.', 'devicehub-theme'); ?>
+    </p>
+    <p class="description" style="font-size:11px;">
         <?php esc_html_e('Optional. Shown on screens ≤767px. If not set, the desktop banner image is used.', 'devicehub-theme'); ?>
     </p>
     <script>
@@ -362,6 +594,38 @@ function devhub_save_promo_banner_meta(int $post_id, WP_Post $post, bool $update
     add_action('save_post_devhub_promo_banner', 'devhub_save_promo_banner_meta', 10, 3);
 }
 
+function devhub_save_promo_banner_order(): void
+{
+    check_ajax_referer('devhub_save_promo_banner_order', 'nonce');
+
+    if (!current_user_can('edit_posts')) {
+        wp_send_json_error(['message' => __('You are not allowed to reorder promo banners.', 'devicehub-theme')], 403);
+    }
+
+    $ordered_ids = isset($_POST['ordered_ids']) ? array_map('absint', (array) $_POST['ordered_ids']) : [];
+
+    if (empty($ordered_ids)) {
+        wp_send_json_error(['message' => __('No promo banners were provided for ordering.', 'devicehub-theme')], 400);
+    }
+
+    foreach ($ordered_ids as $index => $post_id) {
+        if (get_post_type($post_id) !== 'devhub_promo_banner') {
+            continue;
+        }
+
+        if (!current_user_can('edit_post', $post_id)) {
+            continue;
+        }
+
+        wp_update_post([
+            'ID' => $post_id,
+            'menu_order' => $index + 1,
+        ]);
+    }
+
+    wp_send_json_success();
+}
+
 add_action('admin_notices', 'devhub_promo_banner_admin_notice');
 
 function devhub_promo_banner_admin_notice(): void
@@ -405,17 +669,6 @@ function devhub_promo_banner_admin_notice(): void
     <?php
 }
 
-add_filter('enter_title_here', 'devhub_promo_banner_title_placeholder', 10, 2);
-
-function devhub_promo_banner_title_placeholder(string $placeholder, WP_Post $post): string
-{
-    if ($post->post_type === 'devhub_promo_banner') {
-        return __('Banner name for admin only', 'devicehub-theme');
-    }
-
-    return $placeholder;
-}
-
 add_filter('manage_devhub_promo_banner_posts_columns', 'devhub_promo_banner_columns');
 
 function devhub_promo_banner_columns(array $columns): array
@@ -423,8 +676,8 @@ function devhub_promo_banner_columns(array $columns): array
     return [
         'cb' => $columns['cb'] ?? '',
         'thumbnail' => __('Image', 'devicehub-theme'),
-        'title' => __('Banner Name', 'devicehub-theme'),
         'placement' => __('Area', 'devicehub-theme'),
+        'sort_handle' => '',
         'menu_order' => __('Order', 'devicehub-theme'),
         'date' => __('Date', 'devicehub-theme'),
     ];
@@ -446,6 +699,10 @@ function devhub_render_promo_banner_column(string $column, int $post_id): void
         $placements = devhub_get_promo_banner_placements();
         $placement = (string) get_post_meta($post_id, DEVHUB_PROMO_BANNER_PLACEMENT_META, true);
         echo esc_html($placements[$placement] ?? '—');
+    }
+
+    if ($column === 'sort_handle') {
+        echo '<span class="dashicons dashicons-menu devhub-promo-banner-order-handle" aria-hidden="true"></span>';
     }
 
     if ($column === 'menu_order') {
