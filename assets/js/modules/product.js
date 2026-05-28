@@ -125,7 +125,111 @@
     }
   }
 
+  function devhubGetPricingOfferCandidates(root) {
+    if (!root) {
+      return [];
+    }
+
+    try {
+      var offers = JSON.parse(root.getAttribute("data-pricing-offers") || "[]");
+      return Array.isArray(offers) ? offers : [];
+    } catch (error) {
+      return [];
+    }
+  }
+
+  function devhubFindMatchingQuantityRule(quantityRules, quantity) {
+    if (!Array.isArray(quantityRules)) {
+      return null;
+    }
+
+    for (var i = 0; i < quantityRules.length; i++) {
+      var quantityRule = quantityRules[i] || {};
+      var start = parseInt(quantityRule.start_range || "0", 10);
+      var endValue = String(quantityRule.end_range || "").trim();
+      var end = endValue !== "" ? parseInt(endValue, 10) : Number.POSITIVE_INFINITY;
+
+      start = Number.isFinite(start) ? start : 0;
+      end = Number.isFinite(end) ? end : Number.POSITIVE_INFINITY;
+
+      if (quantity >= start && quantity <= end) {
+        return quantityRule;
+      }
+    }
+
+    return null;
+  }
+
+  function devhubResolveActivePricingOffer(root, quantity) {
+    var offers = devhubGetPricingOfferCandidates(root);
+    var safeQuantity = Number.isFinite(quantity) && quantity > 0 ? quantity : 1;
+
+    for (var i = 0; i < offers.length; i++) {
+      var offer = offers[i] || {};
+
+      if (offer.type !== "cart_quantity") {
+        return offer;
+      }
+
+      if (devhubFindMatchingQuantityRule(offer.quantity_rules, safeQuantity)) {
+        return offer;
+      }
+    }
+
+    return null;
+  }
+
+  function devhubSyncPricingOfferBadge(root, offer) {
+    if (!root) {
+      return;
+    }
+
+    var gallery = root.querySelector(".devhub-single__main-image");
+    if (!gallery) {
+      return;
+    }
+
+    var badge = gallery.querySelector(".devhub-single__offer-badge");
+
+    if (!offer) {
+      if (badge) {
+        badge.hidden = true;
+      }
+      return;
+    }
+
+    if (!badge) {
+      badge = document.createElement("aside");
+      badge.className = "devhub-single__offer-badge";
+      badge.setAttribute("role", "status");
+      badge.setAttribute("aria-live", "polite");
+      badge.innerHTML =
+        '<span class="devhub-single__offer-badge-kicker">Today\'s Offer</span>' +
+        '<strong class="devhub-single__offer-badge-value"></strong>' +
+        '<span class="devhub-single__offer-badge-caption"></span>';
+      gallery.insertBefore(badge, gallery.firstChild);
+    }
+
+    badge.hidden = false;
+    badge.classList.toggle(
+      "devhub-single__offer-badge--cart",
+      ["fixed_cart_amount", "percent_total_amount"].indexOf(offer.type) !== -1
+    );
+
+    var valueNode = badge.querySelector(".devhub-single__offer-badge-value");
+    var captionNode = badge.querySelector(".devhub-single__offer-badge-caption");
+
+    if (valueNode) {
+      valueNode.textContent = offer.badge_value || "";
+    }
+
+    if (captionNode) {
+      captionNode.textContent = offer.badge_caption || "";
+    }
+  }
+
   function devhubNormalizePricingTableDisplay() {
+    var root = document.querySelector(".devhub-single");
     var slot = document.querySelector(".devhub-single__pricing-table-slot");
     var tables = document.querySelectorAll(".devhub-single__pricing-table-slot .wdp_table");
 
@@ -271,7 +375,30 @@
       normalizeTable(table);
     });
 
+    function syncVisibleTable() {
+      var quantityInput = document.querySelector('.devhub-single__cart-form input[name="quantity"]');
+      var quantity = quantityInput ? parseInt(quantityInput.value || "1", 10) : 1;
+      var activeOffer = devhubResolveActivePricingOffer(root, quantity);
+      var activeRuleId = activeOffer && activeOffer.type === "cart_quantity" && activeOffer.pricing_table
+        ? String(activeOffer.id || "")
+        : "";
+
+      if (!activeRuleId) {
+        slot.hidden = true;
+        tables.forEach(function (table) {
+          table.hidden = true;
+        });
+        return;
+      }
+
+      slot.hidden = false;
+      tables.forEach(function (table) {
+        table.hidden = String(table.getAttribute("data-rule") || "") !== activeRuleId;
+      });
+    }
+
     if (slot.dataset.devhubPricingObserverBound === "true") {
+      syncVisibleTable();
       return;
     }
 
@@ -300,11 +427,14 @@
       input.addEventListener("input", normalizeSoon);
     });
 
+    document.addEventListener("devhub:pricing-offer-updated", syncVisibleTable);
     window.setTimeout(normalizeSoon, 150);
     window.setTimeout(normalizeSoon, 500);
+    window.setTimeout(syncVisibleTable, 160);
   }
 
   function devhubInitDynamicQuantityPrice() {
+    var root = document.querySelector(".devhub-single");
     var form = document.querySelector(".devhub-single__cart-form");
     var priceBox = document.querySelector(".devhub-single__price");
     var quantityInput = form ? form.querySelector('input[name="quantity"]') : null;
@@ -312,10 +442,11 @@
     var addToCartButton = form ? form.querySelector('button[name="add-to-cart"]') : null;
     var ajaxUrl = window.awdajaxobject && window.awdajaxobject.url;
 
-    if (!form || !priceBox || !quantityInput || !addToCartButton || !ajaxUrl) {
+    if (!root || !form || !priceBox || !quantityInput || !addToCartButton) {
       return;
     }
 
+    var pricingOffers = devhubGetPricingOfferCandidates(root);
     var requestToken = 0;
     var debounceTimer = null;
 
@@ -362,12 +493,119 @@
         "<span class=\"woocommerce-Price-amount amount\"><bdi>" + formatMoney(currentPrice) + "</bdi></span>";
     }
 
+    function getBasePriceState() {
+      var currentPrice = Number(root.getAttribute("data-base-current-price") || "");
+      var originalPrice = Number(root.getAttribute("data-base-original-price") || "");
+
+      return {
+        current: Number.isFinite(currentPrice) && currentPrice > 0 ? currentPrice : NaN,
+        original: Number.isFinite(originalPrice) && originalPrice > currentPrice ? originalPrice : NaN,
+      };
+    }
+
+    function applyActiveRulePrice(quantity) {
+      var activeRule = devhubResolveActivePricingOffer(root, quantity);
+      devhubSyncPricingOfferBadge(root, activeRule);
+      document.dispatchEvent(new CustomEvent("devhub:pricing-offer-updated", {
+        detail: { rule: activeRule, quantity: quantity }
+      }));
+
+      if (!activeRule || !activeRule.type) {
+        return false;
+      }
+
+      var basePriceState = getBasePriceState();
+      var baseCurrentPrice = basePriceState.current;
+      var baseOriginalPrice = basePriceState.original;
+
+      if (!Number.isFinite(baseCurrentPrice) || baseCurrentPrice <= 0) {
+        return false;
+      }
+
+      if (activeRule.type === "percent_product_price") {
+        var percentageDiscount = Number(activeRule.discount_value || "");
+        if (!Number.isFinite(percentageDiscount) || percentageDiscount <= 0) {
+          return false;
+        }
+
+        renderPrice(baseCurrentPrice * (1 - percentageDiscount / 100), baseCurrentPrice);
+        return true;
+      }
+
+      if (activeRule.type === "fixed_product_price") {
+        var fixedPrice = Number(activeRule.discount_value || "");
+        if (!Number.isFinite(fixedPrice) || fixedPrice < 0) {
+          return false;
+        }
+
+        renderPrice(fixedPrice, baseCurrentPrice);
+        return true;
+      }
+
+      if (activeRule.type === "cart_quantity") {
+        var matchedQuantityRule = devhubFindMatchingQuantityRule(activeRule.quantity_rules, quantity);
+
+        if (!matchedQuantityRule) {
+          renderPrice(baseCurrentPrice, baseOriginalPrice);
+          return true;
+        }
+
+        var quantityRuleType = String(matchedQuantityRule.dis_type || "").toLowerCase();
+        var quantityRuleValue = Number(matchedQuantityRule.dis_value || "");
+
+        if (!Number.isFinite(quantityRuleValue) || quantityRuleValue < 0) {
+          renderPrice(baseCurrentPrice, baseOriginalPrice);
+          return true;
+        }
+
+        if (quantityRuleType === "percentage") {
+          renderPrice(baseCurrentPrice * (1 - quantityRuleValue / 100), baseCurrentPrice);
+          return true;
+        }
+
+        if (quantityRuleType === "fixed") {
+          renderPrice(Math.max(0, baseCurrentPrice - quantityRuleValue), baseCurrentPrice);
+          return true;
+        }
+
+        renderPrice(baseCurrentPrice, baseOriginalPrice);
+        return true;
+      }
+
+      return false;
+    }
+
+    function renderNativeBasePrice() {
+      var basePriceState = getBasePriceState();
+
+      if (!Number.isFinite(basePriceState.current) || basePriceState.current <= 0) {
+        return false;
+      }
+
+      renderPrice(basePriceState.current, basePriceState.original);
+      return true;
+    }
+
     function requestPriceUpdate() {
       var quantity = parseInt(quantityInput.value || "1", 10);
       var productId = addToCartButton.value || "";
       var variationId = variationInput ? variationInput.value || "" : "";
 
       if (!productId || !Number.isFinite(quantity) || quantity < 1) {
+        return;
+      }
+
+      if (applyActiveRulePrice(quantity)) {
+        return;
+      }
+
+      if (!pricingOffers.length) {
+        renderNativeBasePrice();
+        return;
+      }
+
+      if (!ajaxUrl) {
+        renderNativeBasePrice();
         return;
       }
 
@@ -405,6 +643,7 @@
     quantityInput.addEventListener("input", queuePriceUpdate);
     quantityInput.addEventListener("change", queuePriceUpdate);
     document.addEventListener("devhub:variation-resolved", queuePriceUpdate);
+    queuePriceUpdate();
   }
 
   // ── Tabs ──────────────────────────────────────────────────────────────────
@@ -885,7 +1124,7 @@
 
     swatches.forEach(function (swatch) {
       swatch.addEventListener("click", function () {
-        if (swatch.disabled || swatch.classList.contains("devhub-single__color-swatch--disabled")) {
+        if (swatch.disabled) {
           return;
         }
 
@@ -924,7 +1163,7 @@
 
     btns.forEach(function (btn) {
       btn.addEventListener("click", function () {
-        if (btn.disabled || btn.classList.contains("devhub-single__storage-btn--disabled")) {
+        if (btn.disabled) {
           return;
         }
 
@@ -958,8 +1197,6 @@
   function devhubUpdateOptionAvailability(variations, selectedColor, selectedStorage) {
     var swatches = document.querySelectorAll(".devhub-single__color-swatch");
     var storageBtns = document.querySelectorAll(".devhub-single__storage-btn");
-    var colorInput = document.getElementById("devhubAttr_pa_color");
-    var storageInput = document.getElementById("devhubAttr_pa_storage");
 
     function hasMatchingVariation(color, storage) {
       for (var i = 0; i < variations.length; i++) {
@@ -977,25 +1214,15 @@
     swatches.forEach(function (swatch) {
       var swatchColor = swatch.getAttribute("data-value");
       var enabled = hasMatchingVariation(swatchColor, selectedStorage);
-      swatch.disabled = !enabled;
       swatch.classList.toggle("devhub-single__color-swatch--disabled", !enabled);
-
-      if (!enabled && swatch.classList.contains("devhub-single__color-swatch--active")) {
-        swatch.classList.remove("devhub-single__color-swatch--active");
-        if (colorInput) colorInput.value = "";
-      }
+      swatch.setAttribute("aria-disabled", enabled ? "false" : "true");
     });
 
     storageBtns.forEach(function (btn) {
       var storageValue = btn.getAttribute("data-value");
       var enabled = hasMatchingVariation(selectedColor, storageValue);
-      btn.disabled = !enabled;
       btn.classList.toggle("devhub-single__storage-btn--disabled", !enabled);
-
-      if (!enabled && btn.classList.contains("devhub-single__storage-btn--active")) {
-        btn.classList.remove("devhub-single__storage-btn--active");
-        if (storageInput) storageInput.value = "";
-      }
+      btn.setAttribute("aria-disabled", enabled ? "false" : "true");
     });
   }
 
@@ -1099,6 +1326,8 @@
 
     var selectedColor = colorInput ? colorInput.value : "";
     var selectedStorage = storageInput ? storageInput.value : "";
+    var hasColorOptions = !!document.querySelector(".devhub-single__color-swatch");
+    var hasStorageOptions = !!document.querySelector(".devhub-single__storage-btn");
 
     function syncPurchaseButtons(isAvailable) {
       if (cartBtn) {
@@ -1141,8 +1370,58 @@
       }
     }
 
+    function findMatchingVariation(color, storage, requireExact) {
+      for (var i = 0; i < variations.length; i++) {
+        var variation = variations[i];
+        var attr = variation.attributes || {};
+        var colorOk = !color || attr["attribute_pa_color"] === color;
+        var storageOk = !storage || attr["attribute_pa_storage"] === storage;
+
+        if (!colorOk || !storageOk) {
+          continue;
+        }
+
+        if (requireExact) {
+          if (color && attr["attribute_pa_color"] !== color) {
+            continue;
+          }
+
+          if (storage && attr["attribute_pa_storage"] !== storage) {
+            continue;
+          }
+        }
+
+        return variation;
+      }
+
+      return null;
+    }
+
+    function syncStockState(type, message) {
+      if (!stockBox) {
+        return;
+      }
+
+      stockBox.classList.remove("devhub-single__stock--in", "devhub-single__stock--out");
+      if (!message) {
+        stockBox.hidden = true;
+        return;
+      }
+
+      stockBox.hidden = false;
+      stockBox.classList.add(type === "out" ? "devhub-single__stock--out" : "devhub-single__stock--in");
+      stockBox.innerHTML =
+        '<span class="devhub-single__stock-dot" aria-hidden="true"></span>' + message;
+    }
+
     if (priceBox && !el.dataset.basePriceHtml) {
       el.dataset.basePriceHtml = priceBox.innerHTML;
+    }
+    if (!el.dataset.initialBaseCurrentPrice) {
+      el.dataset.initialBaseCurrentPrice = el.getAttribute("data-base-current-price") || "";
+    }
+    if (!el.dataset.initialBaseOriginalPrice) {
+      el.dataset.initialBaseOriginalPrice = el.getAttribute("data-base-original-price") || "";
     }
     if (stockBox && !el.dataset.baseStockHtml) {
       el.dataset.baseStockHtml = stockBox.innerHTML;
@@ -1156,41 +1435,43 @@
 
     selectedColor = colorInput ? colorInput.value : "";
     selectedStorage = storageInput ? storageInput.value : "";
+    var requiresColorSelection = hasColorOptions;
+    var requiresStorageSelection = hasStorageOptions;
+    var hasCompleteSelection =
+      (!requiresColorSelection || !!selectedColor) &&
+      (!requiresStorageSelection || !!selectedStorage);
 
-    var match = null;
-    for (var i = 0; i < variations.length; i++) {
-      var v = variations[i];
-      var attr = v.attributes;
-      var colorOk =
-        !attr["attribute_pa_color"] ||
-        attr["attribute_pa_color"] === selectedColor;
-      var storageOk =
-        !attr["attribute_pa_storage"] ||
-        attr["attribute_pa_storage"] === selectedStorage;
-      if (colorOk && storageOk) {
-        match = v;
-        break;
-      }
-    }
+    var match = hasCompleteSelection
+      ? findMatchingVariation(selectedColor, selectedStorage, true)
+      : null;
+    var colorGalleryMatch = selectedColor
+      ? findMatchingVariation(selectedColor, "", false)
+      : null;
 
     if (match) {
       if (varIdInput) varIdInput.value = match.id;
+      if (typeof match.native_current_price !== "undefined") {
+        el.setAttribute("data-base-current-price", String(match.native_current_price || ""));
+      }
+      if (typeof match.native_original_price !== "undefined") {
+        el.setAttribute("data-base-original-price", String(match.native_original_price || ""));
+      }
       if (priceBox && match.price_html) {
         priceBox.innerHTML = normalizePriceHtml(match.price_html);
         swapPriceOrder(priceBox);
       }
-      if (stockBox) {
-        stockBox.classList.remove("devhub-single__stock--in", "devhub-single__stock--out");
-        stockBox.classList.add(
-          match.stock_state === "out" ? "devhub-single__stock--out" : "devhub-single__stock--in"
-        );
-        stockBox.innerHTML =
-          '<span class="devhub-single__stock-dot" aria-hidden="true"></span>' +
-          (match.stock_text || (match.in_stock ? "In stock" : "Out of stock"));
-      }
+      syncStockState(
+        match.stock_state === "out" ? "out" : "in",
+        match.stock_text || (match.in_stock ? "In stock" : "Out of stock")
+      );
       if (galleryController) {
-        if (Array.isArray(match.gallery_images) && match.gallery_images.length) {
-          galleryController.setImages(match.gallery_images);
+        var activeGalleryVariation = colorGalleryMatch || match;
+        if (
+          activeGalleryVariation &&
+          Array.isArray(activeGalleryVariation.gallery_images) &&
+          activeGalleryVariation.gallery_images.length
+        ) {
+          galleryController.setImages(activeGalleryVariation.gallery_images);
         } else {
           galleryController.restoreDefault();
         }
@@ -1201,18 +1482,36 @@
     }
 
     if (varIdInput) varIdInput.value = "";
+    el.setAttribute("data-base-current-price", el.dataset.initialBaseCurrentPrice || "");
+    el.setAttribute("data-base-original-price", el.dataset.initialBaseOriginalPrice || "");
     if (priceBox && el.dataset.basePriceHtml) {
       priceBox.innerHTML = el.dataset.basePriceHtml;
     }
-    if (stockBox && el.dataset.baseStockHtml) {
-      stockBox.innerHTML = el.dataset.baseStockHtml;
-      stockBox.classList.remove("devhub-single__stock--in", "devhub-single__stock--out");
-      stockBox.classList.add(el.dataset.baseStockHtml.indexOf("Out of stock") !== -1 ? "devhub-single__stock--out" : "devhub-single__stock--in");
-    }
     if (galleryController) {
-      galleryController.restoreDefault();
+      if (colorGalleryMatch && Array.isArray(colorGalleryMatch.gallery_images) && colorGalleryMatch.gallery_images.length) {
+        galleryController.setImages(colorGalleryMatch.gallery_images);
+      } else {
+        galleryController.restoreDefault();
+      }
     }
-    syncPurchaseButtons(el.dataset.baseIsPurchasable === "1");
+
+    if (!hasCompleteSelection) {
+      if (stockBox && el.dataset.baseStockHtml) {
+        stockBox.hidden = false;
+        stockBox.innerHTML = el.dataset.baseStockHtml;
+        stockBox.classList.remove("devhub-single__stock--in", "devhub-single__stock--out");
+        stockBox.classList.add(
+          el.dataset.baseStockHtml.indexOf("Out of stock") !== -1
+            ? "devhub-single__stock--out"
+            : "devhub-single__stock--in"
+        );
+      }
+      syncPurchaseButtons(false);
+    } else {
+      syncStockState("out", "Not available");
+      syncPurchaseButtons(false);
+    }
+
     document.dispatchEvent(new CustomEvent("devhub:variation-resolved"));
 
     if (cartForm && !cartForm.dataset.devhubVariationGuardBound) {

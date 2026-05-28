@@ -16,7 +16,7 @@ function customize_shop_manager_admin_ui() {
 
             #devicehub-guidance-panel,
             .notice-warning,
-            #litespeed,
+            #litespeed_meta_boxes,
             .litespeed-post-options {
                 display: none !important;
             }

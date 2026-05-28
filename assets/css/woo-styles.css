@@ -2812,6 +2812,16 @@ ul.products li.product a.compare.button.in_compare:after {
   box-shadow: none !important;
 }
 
+/* Hide default WooCommerce frontend notices in favor of DeviceHub custom toasts/UI. */
+.woocommerce .woocommerce-notices-wrapper,
+.woocommerce-page .woocommerce-notices-wrapper,
+.woocommerce-message,
+.woocommerce-error,
+.woocommerce-info,
+.woocommerce-notice {
+  display: none !important;
+}
+
 #cart-add-check {
   position: fixed;
   top: 50%;

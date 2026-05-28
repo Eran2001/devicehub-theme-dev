@@ -1046,11 +1046,14 @@ function devhub_get_active_pricing_rule_rows(): array
         $rows[] = [
             'id' => (int) $rule_id,
             'label' => html_entity_decode(get_the_title($rule_id), ENT_QUOTES, get_bloginfo('charset')),
+            'priority' => (int) get_post_meta($rule_id, 'discount_priority', true),
             'discount_type' => (string) get_post_meta($rule_id, 'discount_type', true),
             'discount_value' => (string) get_post_meta($rule_id, 'discount_value', true),
             'dynamic_value' => get_post_meta($rule_id, 'dynamic_value', true),
             'quantity_type' => (string) get_post_meta($rule_id, 'discount_quantity_type', true),
             'quantity_rules' => is_array($quantity_rules) ? $quantity_rules : [],
+            'pricing_table' => (bool) get_post_meta($rule_id, 'discount_pricing_table', true),
+            'table_layout' => (string) get_post_meta($rule_id, 'discount_table_layout', true),
             'product_list' => (int) get_post_meta($rule_id, 'discount_product_list', true),
             'custom_pl_status' => (bool) get_post_meta($rule_id, 'discount_custom_pl', true),
             'custom_pl' => get_post_meta($rule_id, 'custom_product_list', true),
@@ -1337,7 +1340,27 @@ function devhub_pricing_rule_matches_product(array $rule, WC_Product $product): 
     return empty($rule['custom_pl']) && (int) ($rule['product_list'] ?? 0) <= 0;
 }
 
-function devhub_get_product_pricing_offer_data(WC_Product $product): array
+function devhub_get_matching_product_pricing_rules(WC_Product $product): array
+{
+    $matching_rules = [];
+
+    foreach (devhub_get_active_pricing_rule_rows() as $rule) {
+        if (devhub_pricing_rule_matches_product($rule, $product)) {
+            $matching_rules[] = $rule;
+        }
+    }
+
+    return $matching_rules;
+}
+
+function devhub_get_highest_priority_product_pricing_rule(WC_Product $product): array
+{
+    $matching_rules = devhub_get_matching_product_pricing_rules($product);
+
+    return !empty($matching_rules) ? $matching_rules[0] : [];
+}
+
+function devhub_format_product_pricing_offer_rule(WC_Product $product, array $rule): array
 {
     $format_money_text = static function (float $amount): string {
         return html_entity_decode(wp_strip_all_tags(wc_price($amount)), ENT_QUOTES, get_bloginfo('charset'));
@@ -1353,24 +1376,6 @@ function devhub_get_product_pricing_offer_data(WC_Product $product): array
         return $formatted_value;
     };
 
-    $build_rule_value_label = static function (string $type, string $value) use ($format_money_text, $format_number): string {
-        $normalized_value = trim($value);
-
-        if ($normalized_value === '') {
-            return '';
-        }
-
-        if ($type === 'percent_product_price' || $type === 'percent_total_amount') {
-            return sprintf(__('%s%% OFF', 'devicehub-theme'), $format_number($normalized_value));
-        }
-
-        if ($type === 'fixed_product_price' || $type === 'fixed_cart_amount') {
-            return sprintf(__('%s OFF', 'devicehub-theme'), $format_money_text((float) $normalized_value));
-        }
-
-        return '';
-    };
-
     $get_quantity_caption = static function (string $quantity_type): string {
         if ($quantity_type === 'type_cart') {
             return __('Cart Quantity', 'devicehub-theme');
@@ -1383,98 +1388,144 @@ function devhub_get_product_pricing_offer_data(WC_Product $product): array
         return __('Quantity Offer', 'devicehub-theme');
     };
 
-    foreach (devhub_get_active_pricing_rule_rows() as $rule) {
-        if (devhub_pricing_rule_matches_product($rule, $product)) {
-            $value = trim((string) ($rule['discount_value'] ?? ''));
-            $type = (string) ($rule['discount_type'] ?? '');
-            $badge_value = __('Sale', 'devicehub-theme');
-            $badge_caption = __('Special Offer', 'devicehub-theme');
-            $formatted_value = $format_number($value);
-            $summary = __('A promotional pricing rule is active for this product.', 'devicehub-theme');
+    if (empty($rule)) {
+        return [];
+    }
 
-            if ($type === 'percent_product_price' && $value !== '') {
-                $summary = sprintf(__('%s%% off is active for this product.', 'devicehub-theme'), $formatted_value);
-                $badge_value = sprintf(__('%s%% OFF', 'devicehub-theme'), $formatted_value);
-            } elseif ($type === 'fixed_product_price' && $value !== '') {
-                $summary = sprintf(__('A fixed-price offer is active: %s.', 'devicehub-theme'), $format_money_text((float) $value));
-                $badge_value = $format_money_text((float) $value);
-                $badge_caption = __('Offer Price', 'devicehub-theme');
-            } elseif ($type === 'percent_total_amount' && $value !== '') {
-                $summary = sprintf(__('%s%% off is active on the cart total.', 'devicehub-theme'), $formatted_value);
-                $badge_value = sprintf(__('%s%% OFF', 'devicehub-theme'), $formatted_value);
-                $badge_caption = __('Cart Discount', 'devicehub-theme');
-            } elseif ($type === 'fixed_cart_amount' && $value !== '') {
-                $summary = sprintf(__('%s will be deducted from the cart total.', 'devicehub-theme'), $format_money_text((float) $value));
-                $badge_value = $format_money_text((float) $value);
-                $badge_caption = __('Cart Discount', 'devicehub-theme');
-            } elseif ($type === 'cart_quantity') {
-                $quantity_type = (string) ($rule['quantity_type'] ?? '');
-                $quantity_rules = is_array($rule['quantity_rules'] ?? null) ? $rule['quantity_rules'] : [];
-                $badge_caption = $get_quantity_caption($quantity_type);
-                $summary = __('A quantity-based discount is active for this product.', 'devicehub-theme');
+    $value = trim((string) ($rule['discount_value'] ?? ''));
+    $type = (string) ($rule['discount_type'] ?? '');
+    $badge_value = __('Sale', 'devicehub-theme');
+    $badge_caption = __('Special Offer', 'devicehub-theme');
+    $formatted_value = $format_number($value);
+    $summary = __('A promotional pricing rule is active for this product.', 'devicehub-theme');
 
-                $best_rule = null;
-                foreach ($quantity_rules as $quantity_rule) {
-                    if (!is_array($quantity_rule)) {
-                        continue;
-                    }
+    if ($type === 'percent_product_price' && $value !== '') {
+        $summary = sprintf(__('%s%% off is active for this product.', 'devicehub-theme'), $formatted_value);
+        $badge_value = sprintf(__('%s%% OFF', 'devicehub-theme'), $formatted_value);
+    } elseif ($type === 'fixed_product_price' && $value !== '') {
+        $summary = sprintf(__('A fixed-price offer is active: %s.', 'devicehub-theme'), $format_money_text((float) $value));
+        $badge_value = $format_money_text((float) $value);
+        $badge_caption = __('Offer Price', 'devicehub-theme');
+    } elseif ($type === 'percent_total_amount' && $value !== '') {
+        $summary = sprintf(__('%s%% off is active on the cart total.', 'devicehub-theme'), $formatted_value);
+        $badge_value = sprintf(__('%s%% OFF', 'devicehub-theme'), $formatted_value);
+        $badge_caption = __('Cart Discount', 'devicehub-theme');
+    } elseif ($type === 'fixed_cart_amount' && $value !== '') {
+        $summary = sprintf(__('%s will be deducted from the cart total.', 'devicehub-theme'), $format_money_text((float) $value));
+        $badge_value = $format_money_text((float) $value);
+        $badge_caption = __('Cart Discount', 'devicehub-theme');
+    } elseif ($type === 'cart_quantity') {
+        $quantity_type = (string) ($rule['quantity_type'] ?? '');
+        $quantity_rules = is_array($rule['quantity_rules'] ?? null) ? $rule['quantity_rules'] : [];
+        $badge_caption = $get_quantity_caption($quantity_type);
+        $summary = __('A quantity-based discount is active for this product.', 'devicehub-theme');
 
-                    $rule_value = isset($quantity_rule['dis_value']) ? (float) $quantity_rule['dis_value'] : null;
-                    if ($rule_value === null) {
-                        continue;
-                    }
-
-                    if ($best_rule === null || $rule_value > (float) ($best_rule['dis_value'] ?? 0)) {
-                        $best_rule = $quantity_rule;
-                    }
-                }
-
-                if (is_array($best_rule)) {
-                    $best_type = strtolower((string) ($best_rule['dis_type'] ?? ''));
-                    $best_value = isset($best_rule['dis_value']) ? (string) $best_rule['dis_value'] : '';
-                    $best_formatted_value = $format_number($best_value);
-
-                    if ($best_type === 'percentage' && $best_value !== '') {
-                        $badge_value = sprintf(__('%s%% OFF', 'devicehub-theme'), $best_formatted_value);
-                        $summary = sprintf(__('A quantity-based discount of up to %s%% is active for this product.', 'devicehub-theme'), $best_formatted_value);
-                    } elseif ($best_type === 'fixed' && $best_value !== '') {
-                        $badge_value = sprintf(__('%s OFF', 'devicehub-theme'), $format_money_text((float) $best_value));
-                        $summary = sprintf(__('A quantity-based discount of up to %s is active for this product.', 'devicehub-theme'), $format_money_text((float) $best_value));
-                    } else {
-                        $badge_value = __('Qty Offer', 'devicehub-theme');
-                    }
-                } else {
-                    $badge_value = __('Qty Offer', 'devicehub-theme');
-                }
-            } elseif ($type === 'bogo') {
-                $badge_value = __('BOGO', 'devicehub-theme');
-                $badge_caption = __('Buy X Get X', 'devicehub-theme');
-                $summary = __('A buy-one-get-one style offer is active for this product.', 'devicehub-theme');
-            } elseif ($type === 'gift') {
-                $badge_value = __('Gift', 'devicehub-theme');
-                $badge_caption = __('Gift Product', 'devicehub-theme');
-                $summary = __('A gift-product offer is active for this product.', 'devicehub-theme');
-            } elseif ($type === 'pay_method') {
-                $badge_value = __('Pay Offer', 'devicehub-theme');
-                $badge_caption = __('Payment Method', 'devicehub-theme');
-                $summary = __('A payment-method offer is active for this product.', 'devicehub-theme');
-            } elseif ($type === 'ship_method') {
-                $badge_value = __('Ship Offer', 'devicehub-theme');
-                $badge_caption = __('Shipping Method', 'devicehub-theme');
-                $summary = __('A shipping-method offer is active for this product.', 'devicehub-theme');
+        $best_rule = null;
+        foreach ($quantity_rules as $quantity_rule) {
+            if (!is_array($quantity_rule)) {
+                continue;
             }
 
-            if ($product->is_type('variable')) {
-                $summary .= ' ' . __('This offer applies across the available variants matched by the rule.', 'devicehub-theme');
+            $rule_value = isset($quantity_rule['dis_value']) ? (float) $quantity_rule['dis_value'] : null;
+            if ($rule_value === null) {
+                continue;
             }
 
-            return [
-                'label' => $rule['label'],
-                'type' => $type,
-                'summary' => $summary,
-                'badge_value' => $badge_value,
-                'badge_caption' => $badge_caption,
-            ];
+            if ($best_rule === null || $rule_value > (float) ($best_rule['dis_value'] ?? 0)) {
+                $best_rule = $quantity_rule;
+            }
+        }
+
+        if (is_array($best_rule)) {
+            $best_type = strtolower((string) ($best_rule['dis_type'] ?? ''));
+            $best_value = isset($best_rule['dis_value']) ? (string) $best_rule['dis_value'] : '';
+            $best_formatted_value = $format_number($best_value);
+
+            if ($best_type === 'percentage' && $best_value !== '') {
+                $badge_value = sprintf(__('%s%% OFF', 'devicehub-theme'), $best_formatted_value);
+                $summary = sprintf(__('A quantity-based discount of up to %s%% is active for this product.', 'devicehub-theme'), $best_formatted_value);
+            } elseif ($best_type === 'fixed' && $best_value !== '') {
+                $badge_value = sprintf(__('%s OFF', 'devicehub-theme'), $format_money_text((float) $best_value));
+                $summary = sprintf(__('A quantity-based discount of up to %s is active for this product.', 'devicehub-theme'), $format_money_text((float) $best_value));
+            } else {
+                $badge_value = __('Qty Offer', 'devicehub-theme');
+            }
+        } else {
+            $badge_value = __('Qty Offer', 'devicehub-theme');
+        }
+    } elseif ($type === 'bogo') {
+        $badge_value = __('BOGO', 'devicehub-theme');
+        $badge_caption = __('Buy X Get X', 'devicehub-theme');
+        $summary = __('A buy-one-get-one style offer is active for this product.', 'devicehub-theme');
+    } elseif ($type === 'gift') {
+        $badge_value = __('Gift', 'devicehub-theme');
+        $badge_caption = __('Gift Product', 'devicehub-theme');
+        $summary = __('A gift-product offer is active for this product.', 'devicehub-theme');
+    } elseif ($type === 'pay_method') {
+        $badge_value = __('Pay Offer', 'devicehub-theme');
+        $badge_caption = __('Payment Method', 'devicehub-theme');
+        $summary = __('A payment-method offer is active for this product.', 'devicehub-theme');
+    } elseif ($type === 'ship_method') {
+        $badge_value = __('Ship Offer', 'devicehub-theme');
+        $badge_caption = __('Shipping Method', 'devicehub-theme');
+        $summary = __('A shipping-method offer is active for this product.', 'devicehub-theme');
+    }
+
+    if ($product->is_type('variable')) {
+        $summary .= ' ' . __('This offer applies across the available variants matched by the rule.', 'devicehub-theme');
+    }
+
+    return [
+        'id' => (int) ($rule['id'] ?? 0),
+        'priority' => (int) ($rule['priority'] ?? 0),
+        'label' => $rule['label'],
+        'type' => $type,
+        'summary' => $summary,
+        'badge_value' => $badge_value,
+        'badge_caption' => $badge_caption,
+        'quantity_type' => (string) ($rule['quantity_type'] ?? ''),
+        'quantity_rules' => is_array($rule['quantity_rules'] ?? null) ? $rule['quantity_rules'] : [],
+        'discount_value' => $value,
+        'pricing_table' => !empty($rule['pricing_table']),
+    ];
+}
+
+function devhub_get_product_pricing_offer_candidates(WC_Product $product): array
+{
+    $candidates = [];
+
+    foreach (devhub_get_matching_product_pricing_rules($product) as $rule) {
+        $formatted = devhub_format_product_pricing_offer_rule($product, $rule);
+
+        if (!empty($formatted)) {
+            $candidates[] = $formatted;
+        }
+    }
+
+    return $candidates;
+}
+
+function devhub_get_product_pricing_offer_data(WC_Product $product, int $quantity = 1): array
+{
+    $quantity = max(1, $quantity);
+
+    foreach (devhub_get_product_pricing_offer_candidates($product) as $candidate) {
+        if (($candidate['type'] ?? '') !== 'cart_quantity') {
+            return $candidate;
+        }
+
+        $quantity_rules = is_array($candidate['quantity_rules'] ?? null) ? $candidate['quantity_rules'] : [];
+        foreach ($quantity_rules as $quantity_rule) {
+            if (!is_array($quantity_rule)) {
+                continue;
+            }
+
+            $from = isset($quantity_rule['start_range']) ? (int) $quantity_rule['start_range'] : 0;
+            $to = isset($quantity_rule['end_range']) && $quantity_rule['end_range'] !== '' ? (int) $quantity_rule['end_range'] : PHP_INT_MAX;
+
+            if ($quantity >= $from && $quantity <= $to) {
+                return $candidate;
+            }
         }
     }
 

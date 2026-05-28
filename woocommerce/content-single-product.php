@@ -78,12 +78,25 @@ $available_variations = '[]';
 if ($is_variable) {
     $raw = array_map(function ($v) use ($product) {
         $variation_product = wc_get_product($v['variation_id']);
+        $native_current_price = 0.0;
+        $native_original_price = 0.0;
+
+        if ($variation_product instanceof WC_Product) {
+            $regular_price = (float) $variation_product->get_regular_price();
+            $sale_price = (float) $variation_product->get_sale_price();
+            $native_current_price = $variation_product->is_on_sale() && $sale_price > 0
+                ? $sale_price
+                : ($regular_price > 0 ? $regular_price : (float) $variation_product->get_price());
+            $native_original_price = $regular_price > $native_current_price ? $regular_price : 0.0;
+        }
 
         return [
             'id' => $v['variation_id'],
             'attributes' => $v['attributes'],
             'price' => $v['display_price'],
             'price_html' => $v['price_html'] ?? wc_price((float) $v['display_price']),
+            'native_current_price' => $native_current_price,
+            'native_original_price' => $native_original_price,
             'in_stock' => $v['is_in_stock'],
             'stock_state' => $variation_product instanceof WC_Product ? devhub_get_product_stock_state($variation_product) : ($v['is_in_stock'] ? 'in' : 'out'),
             'stock_text' => $variation_product instanceof WC_Product ? devhub_get_product_stock_text($variation_product) : ($v['is_in_stock'] ? __('In stock', 'devicehub-theme') : __('Out of stock', 'devicehub-theme')),
@@ -91,6 +104,25 @@ if ($is_variable) {
         ];
     }, $product->get_available_variations());
     $available_variations = wp_json_encode($raw);
+}
+
+$pricing_offer_candidates = function_exists('devhub_get_product_pricing_offer_candidates')
+    ? devhub_get_product_pricing_offer_candidates($product)
+    : [];
+$active_pricing_offer = function_exists('devhub_get_product_pricing_offer_data')
+    ? devhub_get_product_pricing_offer_data($product, 1)
+    : [];
+
+$base_current_price = 0.0;
+$base_original_price = 0.0;
+
+if (!$is_variable) {
+    $base_regular_price = (float) $product->get_regular_price();
+    $base_sale_price = (float) $product->get_sale_price();
+    $base_current_price = $product->is_on_sale() && $base_sale_price > 0
+        ? $base_sale_price
+        : ($base_regular_price > 0 ? $base_regular_price : (float) $product->get_price());
+    $base_original_price = $base_regular_price > $base_current_price ? $base_regular_price : 0.0;
 }
 
 $bundle_context = devhub_get_product_bundle_context($product->get_id());
@@ -235,16 +267,16 @@ $has_features_tab = !empty($features_sections);
 $has_specs_tab = !empty($quick_stats) || !empty($specs) || !empty($physical_specs);
 $features_is_active = $has_features_tab;
 $specs_is_active = !$has_features_tab && $has_specs_tab;
-$pricing_offer = function_exists('devhub_get_product_pricing_offer_data')
-    ? devhub_get_product_pricing_offer_data($product)
-    : [];
-
 // ── 2. Markup ─────────────────────────────────────────────────────────────────
 ?>
 
 <div class="devhub-single"
     data-variations="<?php echo esc_attr($available_variations); ?>"
-    data-default-gallery="<?php echo esc_attr(wp_json_encode($default_gallery)); ?>">
+    data-default-gallery="<?php echo esc_attr(wp_json_encode($default_gallery)); ?>"
+    data-pricing-offers="<?php echo esc_attr(wp_json_encode($pricing_offer_candidates)); ?>"
+    data-active-pricing-offer="<?php echo esc_attr(wp_json_encode($active_pricing_offer)); ?>"
+    data-base-current-price="<?php echo esc_attr((string) $base_current_price); ?>"
+    data-base-original-price="<?php echo esc_attr((string) $base_original_price); ?>">
     <div class="wf-container">
 
         <div class="devhub-page-bar">
@@ -258,11 +290,11 @@ $pricing_offer = function_exists('devhub_get_product_pricing_offer_data')
             <div class="devhub-single__gallery">
 
                 <div class="devhub-single__main-image">
-                    <?php if (!empty($pricing_offer)): ?>
-                        <aside class="devhub-single__offer-badge<?php echo in_array(($pricing_offer['type'] ?? ''), ['fixed_cart_amount', 'percent_total_amount'], true) ? ' devhub-single__offer-badge--cart' : ''; ?>" role="status" aria-live="polite">
+                    <?php if (!empty($active_pricing_offer)): ?>
+                        <aside class="devhub-single__offer-badge<?php echo in_array(($active_pricing_offer['type'] ?? ''), ['fixed_cart_amount', 'percent_total_amount'], true) ? ' devhub-single__offer-badge--cart' : ''; ?>" role="status" aria-live="polite">
                             <span class="devhub-single__offer-badge-kicker"><?php esc_html_e("Today's Offer", 'devicehub-theme'); ?></span>
-                            <strong class="devhub-single__offer-badge-value"><?php echo esc_html($pricing_offer['badge_value']); ?></strong>
-                            <span class="devhub-single__offer-badge-caption"><?php echo esc_html($pricing_offer['badge_caption']); ?></span>
+                            <strong class="devhub-single__offer-badge-value"><?php echo esc_html($active_pricing_offer['badge_value']); ?></strong>
+                            <span class="devhub-single__offer-badge-caption"><?php echo esc_html($active_pricing_offer['badge_caption']); ?></span>
                         </aside>
                     <?php endif; ?>
                     <img src="<?php echo esc_url($main_img); ?>"
