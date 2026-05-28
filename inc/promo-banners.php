@@ -177,87 +177,105 @@ function devhub_set_promo_banner_admin_order(WP_Query $query): void
 
 function devhub_enqueue_promo_banner_admin_assets(string $hook_suffix): void
 {
-    if ($hook_suffix !== 'edit.php') {
-        return;
-    }
-
     $screen = get_current_screen();
 
     if (!$screen || $screen->post_type !== 'devhub_promo_banner') {
         return;
     }
 
-    $is_default_listing = empty($_GET['s'])
-        && empty($_GET['m'])
-        && empty($_GET['orderby'])
-        && empty($_GET['order'])
-        && empty($_GET['paged'])
-        && empty($_GET['post_status']);
+    if ($hook_suffix === 'edit.php') {
+        $is_default_listing = empty($_GET['s'])
+            && empty($_GET['m'])
+            && empty($_GET['orderby'])
+            && empty($_GET['order'])
+            && empty($_GET['paged'])
+            && empty($_GET['post_status']);
 
-    if (!$is_default_listing) {
+        if (!$is_default_listing) {
+            return;
+        }
+
+        wp_enqueue_script('jquery-ui-sortable');
+
+        wp_register_script('devhub-promo-banner-admin-order', '', ['jquery', 'jquery-ui-sortable'], DEVHUB_VERSION, true);
+        wp_enqueue_script('devhub-promo-banner-admin-order');
+        wp_add_inline_script('devhub-promo-banner-admin-order', "
+            jQuery(function ($) {
+                var \$tableBody = $('#the-list');
+                if (!\$tableBody.length) {
+                    return;
+                }
+
+                \$tableBody.sortable({
+                    items: 'tr',
+                    axis: 'y',
+                    handle: '.devhub-promo-banner-order-handle',
+                    helper: function (event, ui) {
+                        ui.children().each(function () {
+                            $(this).width($(this).width());
+                        });
+                        return ui;
+                    },
+                    update: function () {
+                        var orderedIds = \$tableBody.sortable('toArray', { attribute: 'id' })
+                            .map(function (rowId) {
+                                return parseInt(String(rowId).replace('post-', ''), 10);
+                            })
+                            .filter(function (id) {
+                                return !isNaN(id);
+                            });
+
+                        $.post(ajaxurl, {
+                            action: 'devhub_save_promo_banner_order',
+                            nonce: '" . esc_js(wp_create_nonce('devhub_save_promo_banner_order')) . "',
+                            ordered_ids: orderedIds
+                        });
+                    }
+                });
+            });
+        ");
+
+        wp_add_inline_style('devhub-admin', '
+            .post-type-devhub_promo_banner #the-list tr { cursor: default; }
+            .post-type-devhub_promo_banner .column-sort_handle { width: 52px; text-align: center; }
+            .post-type-devhub_promo_banner .devhub-promo-banner-order-handle {
+                cursor: move;
+                color: #8c8f94;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 24px;
+                height: 24px;
+            }
+            .post-type-devhub_promo_banner .devhub-promo-banner-order-handle:hover {
+                color: #1d2327;
+            }
+            .post-type-devhub_promo_banner .ui-sortable-helper {
+                background: #fff;
+                box-shadow: 0 8px 20px rgba(16, 24, 40, 0.12);
+            }
+        ');
         return;
     }
 
-    wp_enqueue_script('jquery-ui-sortable');
+    if ($hook_suffix !== 'post.php' && $hook_suffix !== 'post-new.php') {
+        return;
+    }
 
-    wp_register_script('devhub-promo-banner-admin-order', '', ['jquery', 'jquery-ui-sortable'], DEVHUB_VERSION, true);
-    wp_enqueue_script('devhub-promo-banner-admin-order');
-    wp_add_inline_script('devhub-promo-banner-admin-order', "
+    wp_enqueue_script('jquery');
+    wp_add_inline_script('jquery', "
         jQuery(function ($) {
-            var \$tableBody = $('#the-list');
-            if (!\$tableBody.length) {
+            var \$mobileBox = $('#devhub-promo-banner-mobile-image');
+            var \$imageBox = $('#devhub-promo-banner-image');
+            var \$target = $('#normal-sortables');
+
+            if (!\$mobileBox.length || !\$imageBox.length || !\$target.length) {
                 return;
             }
 
-            \$tableBody.sortable({
-                items: 'tr',
-                axis: 'y',
-                handle: '.devhub-promo-banner-order-handle',
-                helper: function (event, ui) {
-                    ui.children().each(function () {
-                        $(this).width($(this).width());
-                    });
-                    return ui;
-                },
-                update: function () {
-                    var orderedIds = \$tableBody.sortable('toArray', { attribute: 'id' })
-                        .map(function (rowId) {
-                            return parseInt(String(rowId).replace('post-', ''), 10);
-                        })
-                        .filter(function (id) {
-                            return !isNaN(id);
-                        });
-
-                    $.post(ajaxurl, {
-                        action: 'devhub_save_promo_banner_order',
-                        nonce: '" . esc_js(wp_create_nonce('devhub_save_promo_banner_order')) . "',
-                        ordered_ids: orderedIds
-                    });
-                }
-            });
+            \$mobileBox.insertAfter(\$imageBox);
         });
     ");
-
-    wp_add_inline_style('devhub-admin', '
-        .post-type-devhub_promo_banner #the-list tr { cursor: default; }
-        .post-type-devhub_promo_banner .column-sort_handle { width: 52px; text-align: center; }
-        .post-type-devhub_promo_banner .devhub-promo-banner-order-handle {
-            cursor: move;
-            color: #8c8f94;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 24px;
-            height: 24px;
-        }
-        .post-type-devhub_promo_banner .devhub-promo-banner-order-handle:hover {
-            color: #1d2327;
-        }
-        .post-type-devhub_promo_banner .ui-sortable-helper {
-            background: #fff;
-            box-shadow: 0 8px 20px rgba(16, 24, 40, 0.12);
-        }
-    ');
 }
 
 add_action('add_meta_boxes_devhub_promo_banner', 'devhub_add_promo_banner_meta_boxes');
@@ -287,7 +305,7 @@ function devhub_add_promo_banner_meta_boxes(): void
         __('Mobile Image', 'devicehub-theme'),
         'devhub_render_promo_banner_mobile_image_box',
         'devhub_promo_banner',
-        'side',
+        'normal',
         'default'
     );
 }
