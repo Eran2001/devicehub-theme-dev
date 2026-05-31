@@ -2228,3 +2228,176 @@
     letter-spacing: 0;
   }
 }
+
+/* ==========================================================================
+   Reviews tab
+   ========================================================================== */
+
+.devhub-single__tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  margin-left: 6px;
+  border-radius: 999px;
+  background: var(--devhub-primary, #f97316);
+  color: #fff;
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.devhub-single__reviews-wrap {
+  padding: 32px 0 8px;
+}
+
+/* Empty state */
+.devhub-reviews__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px 40px;
+  text-align: center;
+}
+
+.devhub-reviews__empty-icon {
+  width: 72px;
+  height: 72px;
+  margin-bottom: 20px;
+  opacity: 0.55;
+}
+
+.devhub-reviews__empty-title {
+  font-size: clamp(1.8rem, 2vw, 2.2rem);
+  font-weight: 700;
+  color: var(--devhub-dark, #1e293b);
+  margin: 0 0 8px;
+}
+
+.devhub-reviews__empty-sub {
+  font-size: clamp(1.4rem, 1.5vw, 1.6rem);
+  color: var(--devhub-mid, #64748b);
+  margin: 0 0 32px;
+}
+
+/* Review list */
+.devhub-reviews__list {
+  list-style: none;
+  margin: 0 0 32px;
+  padding: 0;
+}
+
+.devhub-reviews__list .comment_container {
+  display: flex;
+  gap: 16px;
+  padding: 20px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.devhub-reviews__list .comment_container img.avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.devhub-reviews__list .comment-text {
+  flex: 1;
+}
+
+.devhub-reviews__list .star-rating {
+  margin-bottom: 6px;
+}
+
+/* Review form */
+.devhub-reviews #review_form_wrapper {
+  margin-top: 32px;
+  padding-top: 28px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.devhub-reviews #reply-title {
+  display: block;
+  font-size: clamp(1.6rem, 1.8vw, 1.9rem);
+  font-weight: 700;
+  color: var(--devhub-dark, #1e293b);
+  margin-bottom: 20px;
+}
+
+.devhub-reviews .comment-form p {
+  margin-bottom: 16px;
+}
+
+.devhub-reviews .comment-form label {
+  display: block;
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--devhub-dark, #1e293b);
+  margin-bottom: 6px;
+}
+
+.devhub-reviews .comment-form input[type="text"],
+.devhub-reviews .comment-form input[type="email"],
+.devhub-reviews .comment-form textarea {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 1.4rem;
+  color: var(--devhub-dark, #1e293b);
+  background: #fff;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.devhub-reviews .comment-form input[type="text"]:focus,
+.devhub-reviews .comment-form input[type="email"]:focus,
+.devhub-reviews .comment-form textarea:focus {
+  outline: none;
+  border-color: var(--devhub-primary, #f97316);
+}
+
+.devhub-reviews .comment-form textarea {
+  resize: vertical;
+  min-height: 120px;
+}
+
+.devhub-reviews .comment-form select {
+  padding: 10px 14px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 1.4rem;
+  background: #fff;
+  color: var(--devhub-dark, #1e293b);
+}
+
+.devhub-reviews .comment-form .form-submit {
+  margin-top: 8px;
+}
+
+.devhub-reviews .comment-form .submit {
+  display: inline-block;
+  padding: 12px 28px;
+  background: var(--devhub-primary, #f97316);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 1.5rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.devhub-reviews .comment-form .submit:hover {
+  opacity: 0.88;
+}
+
+.devhub-reviews .must-log-in,
+.woocommerce-verification-required {
+  font-size: 1.4rem;
+  color: var(--devhub-mid, #64748b);
+  margin-top: 16px;
+}

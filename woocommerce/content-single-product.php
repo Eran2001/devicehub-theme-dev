@@ -265,8 +265,11 @@ if ($has_feature_content($returns_html)) {
 
 $has_features_tab = !empty($features_sections);
 $has_specs_tab = !empty($quick_stats) || !empty($specs) || !empty($physical_specs);
+$has_reviews_tab = comments_open();
+$review_count = $has_reviews_tab ? $product->get_review_count() : 0;
 $features_is_active = $has_features_tab;
 $specs_is_active = !$has_features_tab && $has_specs_tab;
+$reviews_is_active = !$has_features_tab && !$has_specs_tab && $has_reviews_tab;
 // ── 2. Markup ─────────────────────────────────────────────────────────────────
 ?>
 
@@ -548,7 +551,7 @@ $specs_is_active = !$has_features_tab && $has_specs_tab;
         </div><!-- /.devhub-single__layout -->
 
         <!-- ── Tabs ──────────────────────────────────────────────────────── -->
-        <?php if ($has_features_tab || $has_specs_tab): ?>
+        <?php if ($has_features_tab || $has_specs_tab || $has_reviews_tab): ?>
             <div class="devhub-single__tabs">
 
                 <div class="devhub-single__tab-nav" role="tablist">
@@ -557,7 +560,7 @@ $specs_is_active = !$has_features_tab && $has_specs_tab;
                             role="tab"
                             aria-selected="<?php echo $features_is_active ? 'true' : 'false'; ?>"
                             aria-controls="devhubTabFeatures" data-tab="features">
-                            <?php esc_html_e('Features', 'devicehub-theme'); ?>
+                            <?php esc_html_e('Description', 'devicehub-theme'); ?>
                         </button>
                     <?php endif; ?>
                     <?php if ($has_specs_tab): ?>
@@ -568,6 +571,17 @@ $specs_is_active = !$has_features_tab && $has_specs_tab;
                             <?php esc_html_e('Specifications', 'devicehub-theme'); ?>
                         </button>
                     <?php endif; ?>
+                    <?php if ($has_reviews_tab): ?>
+                        <button class="devhub-single__tab-btn<?php echo $reviews_is_active ? ' devhub-single__tab-btn--active' : ''; ?>"
+                            role="tab"
+                            aria-selected="<?php echo $reviews_is_active ? 'true' : 'false'; ?>"
+                            aria-controls="devhubTabReviews" data-tab="reviews">
+                            <?php esc_html_e('Reviews', 'devicehub-theme'); ?>
+                            <?php if ($review_count > 0): ?>
+                                <span class="devhub-single__tab-count"><?php echo esc_html($review_count); ?></span>
+                            <?php endif; ?>
+                        </button>
+                    <?php endif; ?>
                 </div>
 
                 <?php if ($has_features_tab): ?>
@@ -576,7 +590,6 @@ $specs_is_active = !$has_features_tab && $has_specs_tab;
                         <div class="devhub-single__feature-cards">
                             <?php foreach ($features_sections as $section): ?>
                                 <div class="devhub-single__desc-card devhub-single__feature-card">
-                                    <h3 class="devhub-single__feature-title"><?php echo esc_html($section['title']); ?></h3>
                                     <div class="devhub-single__features-content">
                                         <?php echo $section['content']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
                                     </div>
@@ -623,6 +636,15 @@ $specs_is_active = !$has_features_tab && $has_specs_tab;
                             </table>
                         <?php endif; ?>
 
+                    </div>
+                <?php endif; ?>
+
+                <?php if ($has_reviews_tab): ?>
+                    <div class="devhub-single__tab-panel<?php echo $reviews_is_active ? ' devhub-single__tab-panel--active' : ''; ?>"
+                        id="devhubTabReviews" role="tabpanel"<?php echo $reviews_is_active ? '' : ' hidden'; ?>>
+                        <div class="devhub-single__reviews-wrap">
+                            <?php comments_template('/woocommerce/single-product-reviews.php', true); ?>
+                        </div>
                     </div>
                 <?php endif; ?>
 

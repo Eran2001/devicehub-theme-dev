@@ -404,7 +404,6 @@ function devhub_render_promo_banner_settings_box(WP_Post $post): void
     wp_nonce_field('devhub_save_promo_banner', 'devhub_promo_banner_nonce');
 
     $placement = (string) get_post_meta($post->ID, DEVHUB_PROMO_BANNER_PLACEMENT_META, true);
-    $link = devhub_get_promo_banner_link($post->ID);
     ?>
     <p>
         <label for="devhub-promo-banner-placement"><strong><?php esc_html_e('Banner Area', 'devicehub-theme'); ?></strong></label><br>
@@ -418,12 +417,6 @@ function devhub_render_promo_banner_settings_box(WP_Post $post): void
         </select>
     </p>
 
-    <p>
-        <label for="devhub-promo-banner-link"><strong><?php esc_html_e('Banner Link', 'devicehub-theme'); ?></strong></label><br>
-        <input id="devhub-promo-banner-link" type="url" name="devhub_promo_banner_link"
-            value="<?php echo esc_attr($link); ?>" placeholder="https://example.com/page"
-            style="width:100%;margin-top:8px;">
-    </p>
     <script>
     (function () {
         var publishBtn = document.getElementById('publish');
@@ -569,13 +562,6 @@ function devhub_save_promo_banner_meta(int $post_id, WP_Post $post, bool $update
         update_post_meta($post_id, DEVHUB_PROMO_BANNER_PLACEMENT_META, $placement);
     } else {
         delete_post_meta($post_id, DEVHUB_PROMO_BANNER_PLACEMENT_META);
-    }
-
-    $link = esc_url_raw(wp_unslash($_POST['devhub_promo_banner_link'] ?? ''));
-    if ($link !== '') {
-        update_post_meta($post_id, DEVHUB_PROMO_BANNER_LINK_META, $link);
-    } else {
-        delete_post_meta($post_id, DEVHUB_PROMO_BANNER_LINK_META);
     }
 
     $mobile_image_id = isset($_POST['devhub_promo_banner_mobile_image_id']) ? absint($_POST['devhub_promo_banner_mobile_image_id']) : 0;
