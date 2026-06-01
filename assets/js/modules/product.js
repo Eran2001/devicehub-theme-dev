@@ -505,10 +505,6 @@
 
     function applyActiveRulePrice(quantity) {
       var activeRule = devhubResolveActivePricingOffer(root, quantity);
-      devhubSyncPricingOfferBadge(root, activeRule);
-      document.dispatchEvent(new CustomEvent("devhub:pricing-offer-updated", {
-        detail: { rule: activeRule, quantity: quantity }
-      }));
 
       if (!activeRule || !activeRule.type) {
         return false;
@@ -522,12 +518,20 @@
         return false;
       }
 
+      function publishActiveOffer(rule) {
+        devhubSyncPricingOfferBadge(root, rule);
+        document.dispatchEvent(new CustomEvent("devhub:pricing-offer-updated", {
+          detail: { rule: rule, quantity: quantity }
+        }));
+      }
+
       if (activeRule.type === "percent_product_price") {
         var percentageDiscount = Number(activeRule.discount_value || "");
         if (!Number.isFinite(percentageDiscount) || percentageDiscount <= 0) {
           return false;
         }
 
+        publishActiveOffer(activeRule);
         renderPrice(baseCurrentPrice * (1 - percentageDiscount / 100), baseCurrentPrice);
         return true;
       }
@@ -538,40 +542,61 @@
           return false;
         }
 
+        publishActiveOffer(activeRule);
         renderPrice(fixedPrice, baseCurrentPrice);
         return true;
       }
 
       if (activeRule.type === "cart_quantity") {
         var matchedQuantityRule = devhubFindMatchingQuantityRule(activeRule.quantity_rules, quantity);
+        var quantityRuleType = matchedQuantityRule ? String(matchedQuantityRule.dis_type || "").toLowerCase() : "";
+        var quantityRuleValue = matchedQuantityRule ? Number(matchedQuantityRule.dis_value || "") : NaN;
+        var quantityBadge = {
+          id: activeRule.id,
+          priority: activeRule.priority,
+          label: activeRule.label,
+          type: activeRule.type,
+          summary: activeRule.summary,
+          badge_value: "Qty Offer",
+          badge_caption: "Quantity Offer",
+          quantity_type: activeRule.quantity_type,
+          quantity_rules: activeRule.quantity_rules,
+          discount_value: activeRule.discount_value,
+          pricing_table: activeRule.pricing_table
+        };
 
         if (!matchedQuantityRule) {
+          publishActiveOffer(quantityBadge);
           renderPrice(baseCurrentPrice, baseOriginalPrice);
           return true;
         }
 
-        var quantityRuleType = String(matchedQuantityRule.dis_type || "").toLowerCase();
-        var quantityRuleValue = Number(matchedQuantityRule.dis_value || "");
-
         if (!Number.isFinite(quantityRuleValue) || quantityRuleValue < 0) {
+          publishActiveOffer(quantityBadge);
           renderPrice(baseCurrentPrice, baseOriginalPrice);
           return true;
         }
 
         if (quantityRuleType === "percentage") {
+          quantityBadge.badge_value = quantityRuleValue + "% OFF";
+          publishActiveOffer(quantityBadge);
           renderPrice(baseCurrentPrice * (1 - quantityRuleValue / 100), baseCurrentPrice);
           return true;
         }
 
         if (quantityRuleType === "fixed") {
+          quantityBadge.badge_value = formatMoney(quantityRuleValue);
+          publishActiveOffer(quantityBadge);
           renderPrice(Math.max(0, baseCurrentPrice - quantityRuleValue), baseCurrentPrice);
           return true;
         }
 
+        publishActiveOffer(quantityBadge);
         renderPrice(baseCurrentPrice, baseOriginalPrice);
         return true;
       }
 
+      publishActiveOffer(activeRule);
       return false;
     }
 

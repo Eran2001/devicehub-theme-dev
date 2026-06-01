@@ -997,6 +997,71 @@ function devhub_get_active_pricing_offer_items(): array
     return $items;
 }
 
+function devhub_pricing_rule_schedule_is_active(int $rule_id): bool
+{
+    $tz = function_exists('wp_timezone') ? wp_timezone() : new DateTimeZone('UTC');
+    $now = new DateTimeImmutable('now', $tz);
+
+    $parse_date = static function ($value) use ($tz): ?DateTimeImmutable {
+        $value = trim((string) $value);
+        if ($value === '') {
+            return null;
+        }
+
+        $date = DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $value, $tz);
+        if ($date instanceof DateTimeImmutable) {
+            return $date;
+        }
+
+        try {
+            return new DateTimeImmutable($value, $tz);
+        } catch (Exception $e) {
+            return null;
+        }
+    };
+
+    $schedules = get_post_meta($rule_id, 'discount_schedules', true);
+    if (is_string($schedules) && $schedules !== '') {
+        $schedules = maybe_unserialize($schedules);
+    }
+
+    if (is_array($schedules) && !empty($schedules)) {
+        foreach ($schedules as $schedule) {
+            if (!is_array($schedule)) {
+                continue;
+            }
+
+            $start = $parse_date($schedule['start_date'] ?? '');
+            $end = $parse_date($schedule['end_date'] ?? '');
+
+            if ($start instanceof DateTimeImmutable && $now < $start) {
+                continue;
+            }
+
+            if ($end instanceof DateTimeImmutable && $now > $end) {
+                continue;
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    $legacy_start = $parse_date(get_post_meta($rule_id, 'discount_start_date', true));
+    $legacy_end = $parse_date(get_post_meta($rule_id, 'discount_end_date', true));
+
+    if ($legacy_start instanceof DateTimeImmutable && $now < $legacy_start) {
+        return false;
+    }
+
+    if ($legacy_end instanceof DateTimeImmutable && $now > $legacy_end) {
+        return false;
+    }
+
+    return true;
+}
+
 function devhub_get_active_pricing_rule_rows(): array
 {
     static $rows = null;
@@ -1037,6 +1102,10 @@ function devhub_get_active_pricing_rule_rows(): array
     }
 
     foreach ($rule_ids as $rule_id) {
+        if (!devhub_pricing_rule_schedule_is_active((int) $rule_id)) {
+            continue;
+        }
+
         $quantity_rules = get_post_meta($rule_id, 'discount_quantityranges', true);
 
         if (is_string($quantity_rules) && $quantity_rules !== '') {
@@ -1417,18 +1486,24 @@ function devhub_format_product_pricing_offer_rule(WC_Product $product, array $ru
     } elseif ($type === 'cart_quantity') {
         $quantity_type = (string) ($rule['quantity_type'] ?? '');
         $quantity_rules = is_array($rule['quantity_rules'] ?? null) ? $rule['quantity_rules'] : [];
-        $badge_caption = $get_quantity_caption($quantity_type);
+        $badge_caption = __('Quantity Offer', 'devicehub-theme');
         $summary = __('A quantity-based discount is active for this product.', 'devicehub-theme');
 
         $best_rule = null;
+        $min_range_start = null;
         foreach ($quantity_rules as $quantity_rule) {
             if (!is_array($quantity_rule)) {
                 continue;
             }
 
+            $from = isset($quantity_rule['start_range']) ? (int) $quantity_rule['start_range'] : 0;
             $rule_value = isset($quantity_rule['dis_value']) ? (float) $quantity_rule['dis_value'] : null;
             if ($rule_value === null) {
                 continue;
+            }
+
+            if ($from > 0 && ($min_range_start === null || $from < $min_range_start)) {
+                $min_range_start = $from;
             }
 
             if ($best_rule === null || $rule_value > (float) ($best_rule['dis_value'] ?? 0)) {
@@ -1441,17 +1516,15 @@ function devhub_format_product_pricing_offer_rule(WC_Product $product, array $ru
             $best_value = isset($best_rule['dis_value']) ? (string) $best_rule['dis_value'] : '';
             $best_formatted_value = $format_number($best_value);
 
+            $badge_value = $min_range_start !== null
+                ? sprintf(__('From %s+', 'devicehub-theme'), (string) $min_range_start)
+                : __('Qty Offer', 'devicehub-theme');
+
             if ($best_type === 'percentage' && $best_value !== '') {
-                $badge_value = sprintf(__('%s%% OFF', 'devicehub-theme'), $best_formatted_value);
                 $summary = sprintf(__('A quantity-based discount of up to %s%% is active for this product.', 'devicehub-theme'), $best_formatted_value);
             } elseif ($best_type === 'fixed' && $best_value !== '') {
-                $badge_value = sprintf(__('%s OFF', 'devicehub-theme'), $format_money_text((float) $best_value));
                 $summary = sprintf(__('A quantity-based discount of up to %s is active for this product.', 'devicehub-theme'), $format_money_text((float) $best_value));
-            } else {
-                $badge_value = __('Qty Offer', 'devicehub-theme');
             }
-        } else {
-            $badge_value = __('Qty Offer', 'devicehub-theme');
         }
     } elseif ($type === 'bogo') {
         $badge_value = __('BOGO', 'devicehub-theme');
@@ -1530,6 +1603,42 @@ function devhub_get_product_pricing_offer_data(WC_Product $product, int $quantit
     }
 
     return [];
+}
+
+function devhub_get_product_pricing_offer_preview_data(WC_Product $product): array
+{
+    $candidates = devhub_get_product_pricing_offer_candidates($product);
+
+    if (empty($candidates)) {
+        return [];
+    }
+
+    $offer = $candidates[0];
+
+    if (($offer['type'] ?? '') !== 'cart_quantity') {
+        return $offer;
+    }
+
+    $quantity_rules = is_array($offer['quantity_rules'] ?? null) ? $offer['quantity_rules'] : [];
+    $min_range_start = null;
+
+    foreach ($quantity_rules as $quantity_rule) {
+        if (!is_array($quantity_rule)) {
+            continue;
+        }
+
+        $from = isset($quantity_rule['start_range']) ? (int) $quantity_rule['start_range'] : 0;
+        if ($from > 0 && ($min_range_start === null || $from < $min_range_start)) {
+            $min_range_start = $from;
+        }
+    }
+
+    $offer['badge_value'] = $min_range_start !== null
+        ? sprintf(__('%s+', 'devicehub-theme'), (string) $min_range_start)
+        : __('Qty Offer', 'devicehub-theme');
+    $offer['badge_caption'] = __('Quantity Offer', 'devicehub-theme');
+
+    return $offer;
 }
 
 function devhub_get_awdp_runtime_discounts(): array

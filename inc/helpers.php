@@ -804,9 +804,13 @@ function devhub_render_product_card(WC_Product $product, string $img_override = 
 {
     $img_url = $img_override !== '' ? $img_override : wp_get_attachment_image_url($product->get_image_id(), 'devhub-card');
     $discount = devhub_get_discount_percent($product);
-    $pricing_offer = function_exists('devhub_get_product_pricing_offer_data')
-        ? devhub_get_product_pricing_offer_data($product)
-        : [];
+    if (function_exists('devhub_get_product_pricing_offer_preview_data')) {
+        $pricing_offer = devhub_get_product_pricing_offer_preview_data($product);
+    } elseif (function_exists('devhub_get_product_pricing_offer_data')) {
+        $pricing_offer = devhub_get_product_pricing_offer_data($product);
+    } else {
+        $pricing_offer = [];
+    }
     $in_stock = $product->is_in_stock();
     $has_bundle = devhub_product_has_bundle($product->get_id());
     $show_bundle_badge = $has_bundle;
