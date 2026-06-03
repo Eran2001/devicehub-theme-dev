@@ -33,6 +33,7 @@ require_once DEVHUB_INC_DIR . '/widgets.php';     // register_sidebar calls
 require_once DEVHUB_INC_DIR . '/enqueue.php';     // All wp_enqueue_style / wp_enqueue_script
 require_once DEVHUB_INC_DIR . '/helpers.php';     // Reusable utility functions (no output)
 require_once DEVHUB_INC_DIR . '/hooks.php';       // All add_action / remove_action overrides
+require_once DEVHUB_INC_DIR . '/admin/product-csv-download.php'; // Admin CSV download button + handler
 require_once DEVHUB_INC_DIR . '/checkout-delivery.php'; // Block checkout delivery method UI/data
 require_once DEVHUB_INC_DIR . '/checkout-auth.php'; // Block checkout auth gate for unauthenticated users
 require_once DEVHUB_INC_DIR . '/checkout-receipt.php'; // Order-received page invoice download button
