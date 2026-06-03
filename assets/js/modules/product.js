@@ -160,12 +160,31 @@
     return null;
   }
 
-  function devhubResolveActivePricingOffer(root, quantity) {
+  function devhubGetBasePriceState(root) {
+    var currentPrice = root ? Number(root.getAttribute("data-base-current-price") || "") : NaN;
+    var originalPrice = root ? Number(root.getAttribute("data-base-original-price") || "") : NaN;
+    var isOnSale = root ? root.getAttribute("data-base-is-on-sale") === "1" : false;
+
+    return {
+      current: Number.isFinite(currentPrice) && currentPrice > 0 ? currentPrice : NaN,
+      original: Number.isFinite(originalPrice) && originalPrice > currentPrice ? originalPrice : NaN,
+      onSale: !!isOnSale,
+    };
+  }
+
+  function devhubResolveActivePricingOffer(root, quantity, productOnSaleOverride) {
     var offers = devhubGetPricingOfferCandidates(root);
     var safeQuantity = Number.isFinite(quantity) && quantity > 0 ? quantity : 1;
+    var basePriceState = devhubGetBasePriceState(root);
+    var productOnSale =
+      typeof productOnSaleOverride === "boolean" ? productOnSaleOverride : !!basePriceState.onSale;
 
     for (var i = 0; i < offers.length; i++) {
       var offer = offers[i] || {};
+
+      if (offer.disable_on_sale && productOnSale) {
+        continue;
+      }
 
       if (offer.type !== "cart_quantity") {
         return offer;
@@ -449,6 +468,9 @@
     var pricingOffers = devhubGetPricingOfferCandidates(root);
     var requestToken = 0;
     var debounceTimer = null;
+    var activeVariationVersion = 0;
+    var currentVariationOnSale =
+      root.getAttribute("data-base-is-on-sale") === "1";
 
     function getCurrencyPrefix() {
       var currencyNode = priceBox.querySelector(".woocommerce-Price-currencySymbol");
@@ -493,24 +515,18 @@
         "<span class=\"woocommerce-Price-amount amount\"><bdi>" + formatMoney(currentPrice) + "</bdi></span>";
     }
 
-    function getBasePriceState() {
-      var currentPrice = Number(root.getAttribute("data-base-current-price") || "");
-      var originalPrice = Number(root.getAttribute("data-base-original-price") || "");
-
-      return {
-        current: Number.isFinite(currentPrice) && currentPrice > 0 ? currentPrice : NaN,
-        original: Number.isFinite(originalPrice) && originalPrice > currentPrice ? originalPrice : NaN,
-      };
-    }
-
     function applyActiveRulePrice(quantity) {
-      var activeRule = devhubResolveActivePricingOffer(root, quantity);
+      var activeRule = devhubResolveActivePricingOffer(root, quantity, currentVariationOnSale);
 
       if (!activeRule || !activeRule.type) {
+        devhubSyncPricingOfferBadge(root, null);
+        document.dispatchEvent(new CustomEvent("devhub:pricing-offer-updated", {
+          detail: { rule: null, quantity: quantity }
+        }));
         return false;
       }
 
-      var basePriceState = getBasePriceState();
+      var basePriceState = devhubGetBasePriceState(root);
       var baseCurrentPrice = basePriceState.current;
       var baseOriginalPrice = basePriceState.original;
 
@@ -528,6 +544,10 @@
       if (activeRule.type === "percent_product_price") {
         var percentageDiscount = Number(activeRule.discount_value || "");
         if (!Number.isFinite(percentageDiscount) || percentageDiscount <= 0) {
+          devhubSyncPricingOfferBadge(root, null);
+          document.dispatchEvent(new CustomEvent("devhub:pricing-offer-updated", {
+            detail: { rule: null, quantity: quantity }
+          }));
           return false;
         }
 
@@ -539,6 +559,10 @@
       if (activeRule.type === "fixed_product_price") {
         var fixedPrice = Number(activeRule.discount_value || "");
         if (!Number.isFinite(fixedPrice) || fixedPrice < 0) {
+          devhubSyncPricingOfferBadge(root, null);
+          document.dispatchEvent(new CustomEvent("devhub:pricing-offer-updated", {
+            detail: { rule: null, quantity: quantity }
+          }));
           return false;
         }
 
@@ -601,7 +625,7 @@
     }
 
     function renderNativeBasePrice() {
-      var basePriceState = getBasePriceState();
+      var basePriceState = devhubGetBasePriceState(root);
 
       if (!Number.isFinite(basePriceState.current) || basePriceState.current <= 0) {
         return false;
@@ -621,6 +645,11 @@
       }
 
       if (applyActiveRulePrice(quantity)) {
+        return;
+      }
+
+      if (currentVariationOnSale) {
+        renderNativeBasePrice();
         return;
       }
 
@@ -661,13 +690,28 @@
     }
 
     function queuePriceUpdate() {
+      var versionAtQueueTime = activeVariationVersion;
       window.clearTimeout(debounceTimer);
-      debounceTimer = window.setTimeout(requestPriceUpdate, 120);
+      debounceTimer = window.setTimeout(function () {
+        if (versionAtQueueTime !== activeVariationVersion) {
+          return;
+        }
+
+        requestPriceUpdate();
+      }, 120);
     }
 
     quantityInput.addEventListener("input", queuePriceUpdate);
     quantityInput.addEventListener("change", queuePriceUpdate);
-    document.addEventListener("devhub:variation-resolved", queuePriceUpdate);
+    document.addEventListener("devhub:variation-resolved", function (event) {
+      if (event && event.detail && typeof event.detail.is_on_sale !== "undefined") {
+        currentVariationOnSale = !!event.detail.is_on_sale;
+      } else {
+        currentVariationOnSale = root.getAttribute("data-base-is-on-sale") === "1";
+      }
+      activeVariationVersion += 1;
+      queuePriceUpdate();
+    });
     queuePriceUpdate();
   }
 
@@ -1448,6 +1492,9 @@
     if (!el.dataset.initialBaseOriginalPrice) {
       el.dataset.initialBaseOriginalPrice = el.getAttribute("data-base-original-price") || "";
     }
+    if (!el.dataset.initialBaseIsOnSale) {
+      el.dataset.initialBaseIsOnSale = el.getAttribute("data-base-is-on-sale") || "0";
+    }
     if (stockBox && !el.dataset.baseStockHtml) {
       el.dataset.baseStockHtml = stockBox.innerHTML;
     }
@@ -1455,6 +1502,9 @@
       el.dataset.baseIsPurchasable =
         stockBox && stockBox.classList.contains("devhub-single__stock--out") ? "0" : "1";
     }
+
+    devhubSyncPricingOfferBadge(el, null);
+    el.setAttribute("data-base-is-on-sale", "0");
 
     devhubUpdateOptionAvailability(variations, selectedColor, selectedStorage);
 
@@ -1481,6 +1531,7 @@
       if (typeof match.native_original_price !== "undefined") {
         el.setAttribute("data-base-original-price", String(match.native_original_price || ""));
       }
+      el.setAttribute("data-base-is-on-sale", match.is_on_sale ? "1" : "0");
       if (priceBox && match.price_html) {
         priceBox.innerHTML = normalizePriceHtml(match.price_html);
         swapPriceOrder(priceBox);
@@ -1502,13 +1553,25 @@
         }
       }
       syncPurchaseButtons(!!match.in_stock);
-      document.dispatchEvent(new CustomEvent("devhub:variation-resolved"));
+      document.dispatchEvent(
+        new CustomEvent("devhub:variation-resolved", {
+          detail: {
+            variation_id: match.id || 0,
+            is_on_sale: !!match.is_on_sale,
+            current_price:
+              typeof match.native_current_price !== "undefined" ? match.native_current_price : null,
+            original_price:
+              typeof match.native_original_price !== "undefined" ? match.native_original_price : null,
+          },
+        })
+      );
       return;
     }
 
     if (varIdInput) varIdInput.value = "";
     el.setAttribute("data-base-current-price", el.dataset.initialBaseCurrentPrice || "");
     el.setAttribute("data-base-original-price", el.dataset.initialBaseOriginalPrice || "");
+    el.setAttribute("data-base-is-on-sale", el.dataset.initialBaseIsOnSale || "0");
     if (priceBox && el.dataset.basePriceHtml) {
       priceBox.innerHTML = el.dataset.basePriceHtml;
     }
@@ -1537,7 +1600,14 @@
       syncPurchaseButtons(false);
     }
 
-    document.dispatchEvent(new CustomEvent("devhub:variation-resolved"));
+    document.dispatchEvent(new CustomEvent("devhub:variation-resolved", {
+      detail: {
+        variation_id: 0,
+        is_on_sale: el.getAttribute("data-base-is-on-sale") === "1",
+        current_price: el.getAttribute("data-base-current-price"),
+        original_price: el.getAttribute("data-base-original-price")
+      }
+    }));
 
     if (cartForm && !cartForm.dataset.devhubVariationGuardBound) {
       cartForm.dataset.devhubVariationGuardBound = "true";

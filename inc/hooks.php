@@ -1107,9 +1107,14 @@ function devhub_get_active_pricing_rule_rows(): array
         }
 
         $quantity_rules = get_post_meta($rule_id, 'discount_quantityranges', true);
+        $discount_config = get_post_meta($rule_id, 'discount_config', true);
 
         if (is_string($quantity_rules) && $quantity_rules !== '') {
             $quantity_rules = maybe_unserialize($quantity_rules);
+        }
+
+        if (!is_array($discount_config)) {
+            $discount_config = [];
         }
 
         $rows[] = [
@@ -1126,6 +1131,7 @@ function devhub_get_active_pricing_rule_rows(): array
             'product_list' => (int) get_post_meta($rule_id, 'discount_product_list', true),
             'custom_pl_status' => (bool) get_post_meta($rule_id, 'discount_custom_pl', true),
             'custom_pl' => get_post_meta($rule_id, 'custom_product_list', true),
+            'disable_on_sale' => !empty($discount_config['disable_on_sale']),
         ];
     }
 
@@ -1397,8 +1403,12 @@ function devhub_get_pricing_rule_product_ids(array $rule): array
     return $cache[$rule_id];
 }
 
-function devhub_pricing_rule_matches_product(array $rule, WC_Product $product): bool
+function devhub_pricing_rule_matches_product(array $rule, WC_Product $product, bool $respect_sale_state = true): bool
 {
+    if ($respect_sale_state && !empty($rule['disable_on_sale']) && $product->is_on_sale()) {
+        return false;
+    }
+
     $product_id = $product->get_parent_id() > 0 ? $product->get_parent_id() : $product->get_id();
     $target_product_ids = devhub_get_pricing_rule_product_ids($rule);
 
@@ -1409,12 +1419,12 @@ function devhub_pricing_rule_matches_product(array $rule, WC_Product $product): 
     return empty($rule['custom_pl']) && (int) ($rule['product_list'] ?? 0) <= 0;
 }
 
-function devhub_get_matching_product_pricing_rules(WC_Product $product): array
+function devhub_get_matching_product_pricing_rules(WC_Product $product, bool $respect_sale_state = true): array
 {
     $matching_rules = [];
 
     foreach (devhub_get_active_pricing_rule_rows() as $rule) {
-        if (devhub_pricing_rule_matches_product($rule, $product)) {
+        if (devhub_pricing_rule_matches_product($rule, $product, $respect_sale_state)) {
             $matching_rules[] = $rule;
         }
     }
@@ -1422,9 +1432,9 @@ function devhub_get_matching_product_pricing_rules(WC_Product $product): array
     return $matching_rules;
 }
 
-function devhub_get_highest_priority_product_pricing_rule(WC_Product $product): array
+function devhub_get_highest_priority_product_pricing_rule(WC_Product $product, bool $respect_sale_state = true): array
 {
-    $matching_rules = devhub_get_matching_product_pricing_rules($product);
+    $matching_rules = devhub_get_matching_product_pricing_rules($product, $respect_sale_state);
 
     return !empty($matching_rules) ? $matching_rules[0] : [];
 }
@@ -1560,14 +1570,15 @@ function devhub_format_product_pricing_offer_rule(WC_Product $product, array $ru
         'quantity_rules' => is_array($rule['quantity_rules'] ?? null) ? $rule['quantity_rules'] : [],
         'discount_value' => $value,
         'pricing_table' => !empty($rule['pricing_table']),
+        'disable_on_sale' => !empty($rule['disable_on_sale']),
     ];
 }
 
-function devhub_get_product_pricing_offer_candidates(WC_Product $product): array
+function devhub_get_product_pricing_offer_candidates(WC_Product $product, bool $respect_sale_state = true): array
 {
     $candidates = [];
 
-    foreach (devhub_get_matching_product_pricing_rules($product) as $rule) {
+    foreach (devhub_get_matching_product_pricing_rules($product, $respect_sale_state) as $rule) {
         $formatted = devhub_format_product_pricing_offer_rule($product, $rule);
 
         if (!empty($formatted)) {
@@ -1578,11 +1589,11 @@ function devhub_get_product_pricing_offer_candidates(WC_Product $product): array
     return $candidates;
 }
 
-function devhub_get_product_pricing_offer_data(WC_Product $product, int $quantity = 1): array
+function devhub_get_product_pricing_offer_data(WC_Product $product, int $quantity = 1, bool $respect_sale_state = true): array
 {
     $quantity = max(1, $quantity);
 
-    foreach (devhub_get_product_pricing_offer_candidates($product) as $candidate) {
+    foreach (devhub_get_product_pricing_offer_candidates($product, $respect_sale_state) as $candidate) {
         if (($candidate['type'] ?? '') !== 'cart_quantity') {
             return $candidate;
         }
@@ -1605,9 +1616,9 @@ function devhub_get_product_pricing_offer_data(WC_Product $product, int $quantit
     return [];
 }
 
-function devhub_get_product_pricing_offer_preview_data(WC_Product $product): array
+function devhub_get_product_pricing_offer_preview_data(WC_Product $product, bool $respect_sale_state = true): array
 {
-    $candidates = devhub_get_product_pricing_offer_candidates($product);
+    $candidates = devhub_get_product_pricing_offer_candidates($product, $respect_sale_state);
 
     if (empty($candidates)) {
         return [];

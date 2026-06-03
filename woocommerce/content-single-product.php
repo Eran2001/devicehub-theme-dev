@@ -80,14 +80,18 @@ if ($is_variable) {
         $variation_product = wc_get_product($v['variation_id']);
         $native_current_price = 0.0;
         $native_original_price = 0.0;
+        $regular_price = 0.0;
+        $sale_price = 0.0;
+        $is_on_sale = false;
 
         if ($variation_product instanceof WC_Product) {
             $regular_price = (float) $variation_product->get_regular_price();
             $sale_price = (float) $variation_product->get_sale_price();
-            $native_current_price = $variation_product->is_on_sale() && $sale_price > 0
+            $is_on_sale = $sale_price > 0 && $regular_price > 0 && $sale_price < $regular_price;
+            $native_current_price = $is_on_sale
                 ? $sale_price
                 : ($regular_price > 0 ? $regular_price : (float) $variation_product->get_price());
-            $native_original_price = $regular_price > $native_current_price ? $regular_price : 0.0;
+            $native_original_price = $is_on_sale && $regular_price > $native_current_price ? $regular_price : 0.0;
         }
 
         return [
@@ -97,6 +101,7 @@ if ($is_variable) {
             'price_html' => $v['price_html'] ?? wc_price((float) $v['display_price']),
             'native_current_price' => $native_current_price,
             'native_original_price' => $native_original_price,
+            'is_on_sale' => $is_on_sale,
             'in_stock' => $v['is_in_stock'],
             'stock_state' => $variation_product instanceof WC_Product ? devhub_get_product_stock_state($variation_product) : ($v['is_in_stock'] ? 'in' : 'out'),
             'stock_text' => $variation_product instanceof WC_Product ? devhub_get_product_stock_text($variation_product) : ($v['is_in_stock'] ? __('In stock', 'devicehub-theme') : __('Out of stock', 'devicehub-theme')),
@@ -107,10 +112,10 @@ if ($is_variable) {
 }
 
 $pricing_offer_candidates = function_exists('devhub_get_product_pricing_offer_candidates')
-    ? devhub_get_product_pricing_offer_candidates($product)
+    ? devhub_get_product_pricing_offer_candidates($product, !$is_variable)
     : [];
 $active_pricing_offer = function_exists('devhub_get_product_pricing_offer_data')
-    ? devhub_get_product_pricing_offer_data($product, 1)
+    ? ($is_variable ? [] : devhub_get_product_pricing_offer_data($product, 1, true))
     : [];
 
 $base_current_price = 0.0;
@@ -119,10 +124,14 @@ $base_original_price = 0.0;
 if (!$is_variable) {
     $base_regular_price = (float) $product->get_regular_price();
     $base_sale_price = (float) $product->get_sale_price();
-    $base_current_price = $product->is_on_sale() && $base_sale_price > 0
+    $base_is_on_sale = $base_sale_price > 0 && $base_regular_price > 0 && $base_sale_price < $base_regular_price;
+    $base_current_price = $base_is_on_sale
         ? $base_sale_price
         : ($base_regular_price > 0 ? $base_regular_price : (float) $product->get_price());
-    $base_original_price = $base_regular_price > $base_current_price ? $base_regular_price : 0.0;
+    $base_original_price = $base_is_on_sale && $base_regular_price > $base_current_price ? $base_regular_price : 0.0;
+}
+if ($is_variable) {
+    $base_is_on_sale = false;
 }
 
 $bundle_context = devhub_get_product_bundle_context($product->get_id());
@@ -279,7 +288,8 @@ $reviews_is_active = !$has_features_tab && !$has_specs_tab && $has_reviews_tab;
     data-pricing-offers="<?php echo esc_attr(wp_json_encode($pricing_offer_candidates)); ?>"
     data-active-pricing-offer="<?php echo esc_attr(wp_json_encode($active_pricing_offer)); ?>"
     data-base-current-price="<?php echo esc_attr((string) $base_current_price); ?>"
-    data-base-original-price="<?php echo esc_attr((string) $base_original_price); ?>">
+    data-base-original-price="<?php echo esc_attr((string) $base_original_price); ?>"
+    data-base-is-on-sale="<?php echo esc_attr($base_is_on_sale ? '1' : '0'); ?>">
     <div class="wf-container">
 
         <div class="devhub-page-bar">
