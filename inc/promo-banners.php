@@ -390,9 +390,9 @@ function devhub_render_promo_banner_image_box(WP_Post $post): void
     <?php
 }
 
-function devhub_reposition_promo_banner_meta_boxes(string $post_type, WP_Post $post): void
+function devhub_reposition_promo_banner_meta_boxes(string $post_type, $post): void
 {
-    if ($post_type !== 'devhub_promo_banner') {
+    if ($post_type !== 'devhub_promo_banner' || !($post instanceof WP_Post)) {
         return;
     }
 

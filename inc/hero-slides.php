@@ -62,9 +62,9 @@ function devhub_add_hero_slide_mobile_image_box(): void
     );
 }
 
-function devhub_reposition_hero_slide_meta_boxes(string $post_type, WP_Post $post): void
+function devhub_reposition_hero_slide_meta_boxes(string $post_type, $post): void
 {
-    if ($post_type !== 'devhub_hero_slide') {
+    if ($post_type !== 'devhub_hero_slide' || !($post instanceof WP_Post)) {
         return;
     }
 
